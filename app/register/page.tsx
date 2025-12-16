@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Loader2, Building2, Mail, Phone, Lock, User } from "lucide-react"
+import { authApi } from "@/lib/api"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -41,18 +42,24 @@ export default function RegisterPage() {
     }
 
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const response = await authApi.register({
+        email,
+        password,
+        businessName,
+        phone,
+        businessType: "Retail", // Default business type
+        address: "", // Optional field
+      })
 
-      setVerificationSent(true)
-      localStorage.setItem("pendingUser", JSON.stringify({ email, businessName, phone, name }))
-
-      // Show verification message instead of immediate redirect
-      setTimeout(() => {
-        setIsLoading(false)
-      }, 500)
+      if (response.success && response.data) {
+        setVerificationSent(true)
+        localStorage.setItem("pendingUser", JSON.stringify({ email, businessName, phone, name }))
+      } else {
+        setError(response.error || "Registration failed. Please try again.")
+      }
     } catch (err) {
-      setError("Registration failed. Please try again.")
+      setError("Network error. Please check your connection and try again.")
+    } finally {
       setIsLoading(false)
     }
   }
