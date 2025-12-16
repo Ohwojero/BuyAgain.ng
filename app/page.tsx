@@ -99,7 +99,7 @@ export default function HomePage() {
                 <div className="text-sm font-medium text-muted-foreground">Nigerian Merchants</div>
               </div>
               <div className="text-center group">
-                <div className="text-5xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
+                <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
                   50,000+
                 </div>
                 <div className="text-sm font-medium text-muted-foreground">Discount Codes Generated</div>
