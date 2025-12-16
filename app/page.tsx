@@ -39,7 +39,7 @@ export default function HomePage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                 </span>
-                Used by 500+ Nigerian Businesses
+                Stop Competitors From Stealing Your Customers This Year
               </Badge>
 
               <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl lg:text-7xl text-balance mb-6 animate-in fade-in slide-in-from-top-4 duration-1000">
