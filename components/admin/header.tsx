@@ -1,0 +1,42 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Bell, LogOut } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+
+export function AdminHeader() {
+  const router = useRouter()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogout = () => {
+    setIsLoggingOut(true)
+
+    localStorage.removeItem("authToken")
+    localStorage.removeItem("adminSession")
+    localStorage.removeItem("userSession")
+    sessionStorage.clear()
+
+    setTimeout(() => {
+      router.push("/login")
+      setIsLoggingOut(false)
+    }, 500)
+  }
+
+  return (
+    <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex items-center justify-between h-16 px-4 md:px-6 lg:px-8">
+        <div className="flex-1" />
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon">
+            <Bell className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleLogout} disabled={isLoggingOut}>
+            <LogOut className={`h-4 w-4 mr-2 ${isLoggingOut ? "animate-spin" : ""}`} />
+            {isLoggingOut ? "Logging out..." : "Logout"}
+          </Button>
+        </div>
+      </div>
+    </header>
+  )
+}
