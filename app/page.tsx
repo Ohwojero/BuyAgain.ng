@@ -76,7 +76,7 @@ export default function HomePage() {
                 >
                   <Link href="/register">
                     Start FREE - No Card Required
-                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  
                   </Link>
                 </Button>
               </div>
@@ -88,39 +88,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Stats Section */}
-        <section className="py-16 border-y border-border bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <div className="text-center group">
-                <div className="text-5xl font-bold bg-gradient-to-br from-primary to-primary/70 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
-                  500+
-                </div>
-                <div className="text-sm font-medium text-muted-foreground">Nigerian Merchants</div>
-              </div>
-              <div className="text-center group">
-                <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
-                  50,000+
-                </div>
-                <div className="text-sm font-medium text-muted-foreground">Discount Codes Generated</div>
-              </div>
-              <div className="text-center group">
-                <div className="text-5xl font-bold bg-gradient-to-br from-purple-600 to-purple-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
-                  85%
-                </div>
-                <div className="text-sm font-medium text-muted-foreground">Customer Return Rate</div>
-              </div>
-              <div className="text-center group">
-                <div className="text-5xl font-bold bg-gradient-to-br from-orange-600 to-orange-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
-                  ₦2M+
-                </div>
-                <div className="text-sm font-medium text-muted-foreground">Repeat Revenue Tracked</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="py-24 bg-background">
+        <section className="py-6 bg-background">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl mb-4">
@@ -167,7 +135,7 @@ export default function HomePage() {
 
               <Card className="relative overflow-hidden group hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-2">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-emerald-600" />
-                <CardContent className="pt-8">
+                <CardContent className="pt-4">
                   <div className="flex items-start gap-4">
                     <div className="h-14 w-14 flex-shrink-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg group-hover:scale-110 transition-transform">
                       3
@@ -205,7 +173,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="py-24 bg-gradient-to-br from-primary/5 to-emerald-500/5">
+        <section className="py-16 bg-gradient-to-br from-primary/5 to-emerald-500/5">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto">
               <div className="text-center mb-12">
@@ -270,6 +238,38 @@ export default function HomePage() {
                 Nigerian Businesses Are Already Growing With BuyAgain
               </h2>
             </div>
+
+            {/* Stats Section */}
+            <section className="py-16 mb-4 border-y border-border bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                  <div className="text-center group">
+                    <div className="text-5xl font-bold bg-gradient-to-br from-primary to-primary/70 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
+                      500+
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">Nigerian Merchants</div>
+                  </div>
+                  <div className="text-center group">
+                    <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
+                      50,000+
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">Discount Codes Generated</div>
+                  </div>
+                  <div className="text-center group">
+                    <div className="text-5xl font-bold bg-gradient-to-br from-purple-600 to-purple-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
+                      85%
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">Customer Return Rate</div>
+                  </div>
+                  <div className="text-center group">
+                    <div className="text-5xl font-bold bg-gradient-to-br from-orange-600 to-orange-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
+                      ₦2M+
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">Repeat Revenue Tracked</div>
+                  </div>
+                </div>
+              </div>
+            </section>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <Card className="relative overflow-hidden border-2 hover:shadow-xl transition-all hover:-translate-y-1">
@@ -345,19 +345,23 @@ export default function HomePage() {
             </div>
 
             <div className="text-center mt-12">
-              <Button size="lg" asChild className="shadow-lg shadow-primary/25">
-                <Link href="/register">
-                  Start FREE - No Card Required
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
+              <Button
+                  size="lg"
+                  asChild
+                  className="shadow-xl shadow-primary/25 h-14 px-10 text-lg font-semibold group"
+                >
+                  <Link href="/register">
+                    Start FREE - No Card Required
+                  
+                  </Link>
+                </Button>
               <p className="mt-4 text-sm text-primary font-medium">(Limited Time Offer)</p>
             </div>
           </div>
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-16 bg-background">
+        <section id="features" className="py-11 bg-background">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
               <Badge variant="outline" className="mb-4">
