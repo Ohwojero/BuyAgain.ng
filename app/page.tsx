@@ -33,7 +33,7 @@ export default function HomePage() {
             <div className="mx-auto max-w-4xl text-center">
               <Badge
                 variant="secondary"
-                className="mb-6 py-2 px-4 text-sm font-medium shadow-sm animate-in fade-in slide-in-from-top-3 duration-700"
+                className="mb-6 py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium shadow-sm animate-in fade-in slide-in-from-top-3 duration-700"
               >
                 <span className="relative flex h-2 w-2 mr-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -251,7 +251,7 @@ export default function HomePage() {
                   </div>
                   <div className="text-center group">
                     <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
-                      50,000+
+                      5000+
                     </div>
                     <div className="text-sm font-medium text-muted-foreground">Discount Codes Generated</div>
                   </div>
@@ -263,7 +263,7 @@ export default function HomePage() {
                   </div>
                   <div className="text-center group">
                     <div className="text-5xl font-bold bg-gradient-to-br from-orange-600 to-orange-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
-                      ₦2M+
+                      ₦20M+
                     </div>
                     <div className="text-sm font-medium text-muted-foreground">Repeat Revenue Tracked</div>
                   </div>
