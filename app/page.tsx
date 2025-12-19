@@ -39,7 +39,7 @@ export default function HomePage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary text-3xl "></span>
                 </span>
-                Stop Competitors From Stealing Your Customers This Year
+                Stop Competitors From Stealing Your Customers This <br />Year
               </Badge>
 
               <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl lg:text-7xl text-balance mb-6 animate-in fade-in slide-in-from-top-4 duration-1000">
@@ -250,19 +250,19 @@ export default function HomePage() {
                     <div className="text-sm font-medium text-muted-foreground">Nigerian Merchants</div>
                   </div>
                   <div className="text-center group">
-                  <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
+                  <div className="text-3xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
                     5000+
                   </div>
                     <div className="text-sm font-medium text-muted-foreground">Discount Codes Generated</div>
                   </div>
                   <div className="text-center group">
-                    <div className="text-3xl font-bold bg-gradient-to-br from-purple-600 to-purple-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
+                    <div className="text-3xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-br from-purple-600 to-purple-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
                       85%
                     </div>
                     <div className="text-sm font-medium text-muted-foreground">Customer Return Rate</div>
                   </div>
                   <div className="text-center group">
-                  <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-orange-600 to-orange-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
+                  <div className="text-3xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-br from-orange-600 to-orange-500 bg-clip-text text-transparent mb-2 transition-transform group-hover:scale-110">
                     ₦20M+
                   </div>
                     <div className="text-sm font-medium text-muted-foreground">Repeat Revenue Tracked</div>
