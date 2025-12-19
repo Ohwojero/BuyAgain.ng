@@ -1,4 +1,7 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:3001'
+    : `http://${window.location.hostname}:3001`);
 console.log('API_BASE_URL:', API_BASE_URL);
 
 export interface ApiResponse<T = any> {
@@ -148,8 +151,8 @@ export const couponsApi = {
   getById: (id: string) =>
     api.get(`/coupons/${id}`),
 
-  create: (data: any) =>
-    api.post('/coupons', data),
+  generate: (data: any) =>
+    api.post('/coupons/generate', data),
 
   update: (id: string, data: any) =>
     api.put(`/coupons/${id}`, data),
@@ -163,8 +166,8 @@ export const redemptionsApi = {
   getAll: () =>
     api.get('/redemptions'),
 
-  create: (data: any) =>
-    api.post('/redemptions', data),
+  redeem: (data: any) =>
+    api.post('/redemptions/redeem', data),
 };
 
 // Analytics API
@@ -174,4 +177,67 @@ export const analyticsApi = {
 
   getRevenue: (params?: any) =>
     api.get('/analytics/revenue', params),
+
+  getAnalytics: () =>
+    api.get('/analytics'),
+};
+
+// Admin API
+export const adminApi = {
+  getOverview: () =>
+    api.get('/admin/overview'),
+};
+
+// Customers API
+export const customersApi = {
+  create: (data: any) =>
+    api.post('/customers', data),
+
+  getAll: () =>
+    api.get('/customers'),
+
+  getById: (id: string) =>
+    api.get(`/customers/${id}`),
+
+  update: (id: string, data: any) =>
+    api.put(`/customers/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete(`/customers/${id}`),
+};
+
+// Team Members API
+export const teammembersApi = {
+  create: (data: any) =>
+    api.post('/teammembers', data),
+
+  getAll: () =>
+    api.get('/teammembers'),
+
+  getById: (id: string) =>
+    api.get(`/teammembers/${id}`),
+
+  update: (id: string, data: any) =>
+    api.put(`/teammembers/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete(`/teammembers/${id}`),
+};
+
+// Audit Logs API
+export const auditlogsApi = {
+  getAll: (params?: any) =>
+    api.get('/auditlogs', params),
+
+  getById: (id: string) =>
+    api.get(`/auditlogs/${id}`),
+};
+
+// Referrals API
+export const referralsApi = {
+  create: (data: any) =>
+    api.post('/referrals', data),
+
+  getAll: () =>
+    api.get('/referrals'),
 };
