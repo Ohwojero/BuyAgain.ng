@@ -1,7 +1,7 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:3001'
-    : `http://${window.location.hostname}:3001`);
+    : 'https://buyagainbackend-production.up.railway.app');
 console.log('API_BASE_URL:', API_BASE_URL);
 
 export interface ApiResponse<T = any> {
