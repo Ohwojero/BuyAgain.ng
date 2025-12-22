@@ -1,3 +1,5 @@
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, Users, QrCode, Percent } from "lucide-react"
@@ -9,6 +11,17 @@ interface AnalyticsData {
   totalRedemptions: number
   totalReferrals: number
   totalRevenue: number
+  returningCustomers: number
+  topCustomers: Array<{
+    id: number
+    name: string
+    visits: number
+  }>
+  couponPerformance: Array<{
+    type: string
+    generated: number
+    redeemed: number
+  }>
 }
 
 export default function AnalyticsPage() {
@@ -16,11 +29,11 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const response = await analyticsApi.getAnalytics()
-        if (response.success) {
+        const response = await analyticsApi.getAnalytics() as { success: boolean; data?: AnalyticsData; error?: string }
+        if (response.success && response.data) {
           setAnalytics(response.data)
         } else {
           setError(response.error || 'Failed to fetch analytics')
@@ -73,11 +86,6 @@ export default function AnalyticsPage() {
     { id: 1, name: "Customer #001", visits: 3 },
     { id: 2, name: "Customer #002", visits: 2 },
     { id: 3, name: "Customer #003", visits: 2 },
-  ]
-  const couponPerformance = [
-    { type: "10% Discount", generated: 5, redeemed: 4 },
-    { type: "15% Discount", generated: 4, redeemed: 3 },
-    { type: "20% Discount", generated: 3, redeemed: 1 },
   ]
 
   return (
