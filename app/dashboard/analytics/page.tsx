@@ -1,24 +1,84 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, Users, QrCode, Percent } from "lucide-react"
+import { useEffect, useState } from "react"
+import { analyticsApi } from "@/lib/api"
+
+interface AnalyticsData {
+  totalCoupons: number
+  totalRedemptions: number
+  totalReferrals: number
+  totalRevenue: number
+}
 
 export default function AnalyticsPage() {
-  // Mock data - will be replaced with real data
-  const analytics = {
-    totalRedemptions: 8,
-    returningCustomers: 5,
-    redemptionRate: 67,
-    topCustomers: [
-      { id: 1, name: "Customer #001", visits: 3 },
-      { id: 2, name: "Customer #002", visits: 2 },
-      { id: 3, name: "Customer #003", visits: 2 },
-    ],
-    couponPerformance: [
-      { type: "10% Discount", generated: 5, redeemed: 4 },
-      { type: "15% Discount", generated: 4, redeemed: 3 },
-      { type: "20% Discount", generated: 3, redeemed: 1 },
-    ],
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const response = await analyticsApi.getAnalytics()
+        if (response.success) {
+          setAnalytics(response.data)
+        } else {
+          setError(response.error || 'Failed to fetch analytics')
+        }
+      } catch (err) {
+        setError('Network error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAnalytics()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
+          <p className="text-muted-foreground mt-1">Track your loyalty program performance</p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading analytics...</div>
+        </div>
+      </div>
+    )
   }
+
+  if (error || !analytics) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
+          <p className="text-muted-foreground mt-1">Track your loyalty program performance</p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-red-500">Error: {error || 'Failed to load analytics'}</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Calculate derived metrics
+  const redemptionRate = analytics.totalCoupons > 0
+    ? Math.round((analytics.totalRedemptions / analytics.totalCoupons) * 100)
+    : 0
+
+  // Mock data for customers and coupons (can be enhanced with real API endpoints later)
+  const topCustomers = [
+    { id: 1, name: "Customer #001", visits: 3 },
+    { id: 2, name: "Customer #002", visits: 2 },
+    { id: 3, name: "Customer #003", visits: 2 },
+  ]
+  const couponPerformance = [
+    { type: "10% Discount", generated: 5, redeemed: 4 },
+    { type: "15% Discount", generated: 4, redeemed: 3 },
+    { type: "20% Discount", generated: 3, redeemed: 1 },
+  ]
 
   return (
     <div className="space-y-6">
@@ -65,7 +125,7 @@ export default function AnalyticsPage() {
                 <Percent className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">{analytics.redemptionRate}%</div>
+                <div className="text-3xl font-bold text-foreground">{redemptionRate}%</div>
                 <p className="text-xs text-muted-foreground mt-1">Codes redeemed</p>
               </CardContent>
             </Card>
@@ -76,8 +136,8 @@ export default function AnalyticsPage() {
                 <QrCode className="h-4 w-4 text-green-600 dark:text-green-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">12</div>
-                <p className="text-xs text-muted-foreground mt-1">This month</p>
+                <div className="text-3xl font-bold text-foreground">{analytics.totalCoupons}</div>
+                <p className="text-xs text-muted-foreground mt-1">All time</p>
               </CardContent>
             </Card>
           </div>

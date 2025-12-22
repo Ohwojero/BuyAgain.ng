@@ -8,20 +8,28 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Download, Printer, Percent, Clock, Maximize2, Share2, Palette } from "lucide-react"
+import { Download, Printer, Percent, Clock, Maximize2, Share2, Palette, Loader2 } from "lucide-react"
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { usePlan } from "@/lib/plan-context"
 import QRCode from "react-qr-code"
 import jsPDF from "jspdf"
+import { couponsApi } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 
 export default function GenerateCodesPage() {
   const router = useRouter()
   const { currentPlan, planLimits } = usePlan()
+  const { toast } = useToast()
   const [codeType, setCodeType] = useState<"single" | "referral" | "promo" | "multiple">("single")
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage")
   const [generated, setGenerated] = useState(false)
+  const [generatedCoupons, setGeneratedCoupons] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [printingPOS, setPrintingPOS] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const [downloadingPDF, setDownloadingPDF] = useState(false)
   const [discountValue, setDiscountValue] = useState("100")
   const [quantity, setQuantity] = useState("10")
   const [users, setUsers] = useState("1")
@@ -31,9 +39,60 @@ export default function GenerateCodesPage() {
   const [printMode, setPrintMode] = useState<"a4" | "pos">("a4")
   const cardRef = useRef<HTMLDivElement>(null)
 
-  const handleGenerate = (e: React.FormEvent) => {
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
-    setGenerated(true)
+    setLoading(true)
+
+    try {
+      // Map frontend values to backend API values
+      const couponTypeMap = {
+        single: "SINGLE_USE",
+        referral: "REFERRAL",
+        promo: "PROMO",
+        multiple: "MULTI_USER"
+      }
+
+      const discountTypeMap = {
+        percentage: "PERCENTAGE",
+        fixed: "FIXED"
+      }
+
+      const payload = {
+        type: couponTypeMap[codeType as keyof typeof couponTypeMap],
+        value: parseInt(discountValue),
+        valueType: discountTypeMap[discountType as keyof typeof discountTypeMap],
+        quantity: parseInt(quantity),
+        expiryDate: expiryDate || undefined,
+        title: `${discountValue}${discountType === "percentage" ? "%" : "₦"} off discount`,
+        description: `Get ${discountValue}${discountType === "percentage" ? "%" : "₦"} off your next purchase`,
+        terms: terms || undefined
+      }
+
+      const response = await couponsApi.generate(payload)
+
+      if (response.success) {
+        setGeneratedCoupons((response.data as any).coupons || [response.data])
+        setGenerated(true)
+        toast({
+          title: "Success",
+          description: `Generated ${quantity} coupon(s) successfully!`,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to generate coupons",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Network error occurred while generating coupons",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const isFeatureAvailable = (feature: string) => {
@@ -86,29 +145,10 @@ export default function GenerateCodesPage() {
 
   const handleDownloadPDF = async () => {
     console.log('handleDownloadPDF called')
-
-    // Show loading indicator
-    const loadingButton = (document.querySelector('button:has(.lucide-download)') as HTMLButtonElement) ||
-                         (Array.from(document.querySelectorAll('button')).find(btn =>
-                           btn.textContent?.includes('Download PDF')
-                         ) as HTMLButtonElement) || null
-
-    let originalText = ''
-    if (loadingButton) {
-      originalText = loadingButton.textContent || 'Download PDF (A4)'
-      loadingButton.textContent = 'Generating PDF...'
-      loadingButton.disabled = true
-
-      // Reset button after 10 seconds as fallback
-      setTimeout(() => {
-        if (loadingButton && loadingButton.textContent === 'Generating PDF...') {
-          loadingButton.textContent = originalText
-          loadingButton.disabled = false
-        }
-      }, 10000)
-    }
+    setDownloadingPDF(true)
 
     try {
+      const couponCode = generatedCoupons[0]?.code || 'ABCD-1234'
       // Create PDF directly without canvas
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pageWidth = pdf.internal.pageSize.getWidth()
@@ -236,7 +276,7 @@ export default function GenerateCodesPage() {
       pdf.setFontSize(6)
       pdf.setFont('helvetica', 'bold')
       pdf.setTextColor(0, 0, 0)
-      pdf.text('ABCD-1234', rightX + rightWidth/2 - 10, qrY + qrSize + 8)
+      pdf.text(couponCode, rightX + rightWidth/2 - 10, qrY + qrSize + 8)
 
       // Validity text (matching preview: small, medium weight)
       const expiryText = `Valid until ${expiryDate ? new Date(expiryDate).toLocaleDateString() : "(Expiring date)"}`
@@ -252,22 +292,11 @@ export default function GenerateCodesPage() {
       pdf.text('© buyagain.ng', rightX + rightWidth/2 - 12, qrY + qrSize + 25)
 
       pdf.save('discount-card.pdf')
-
-      // Reset button
-      if (loadingButton) {
-        loadingButton.textContent = originalText
-        loadingButton.disabled = false
-      }
     } catch (error) {
       console.error('Error generating PDF:', error)
-
-      // Reset button on error
-      if (loadingButton) {
-        loadingButton.textContent = originalText
-        loadingButton.disabled = false
-      }
-
       alert('Error generating PDF. Please try again.')
+    } finally {
+      setDownloadingPDF(false)
     }
   }
 
@@ -277,6 +306,7 @@ export default function GenerateCodesPage() {
     const posWindow = window.open('', '_blank', 'width=300,height=600')
     if (!posWindow) return
 
+    const couponCode = generatedCoupons[0]?.code || 'ABCD-1234'
     const posContent = `
       <html>
         <head>
@@ -299,9 +329,9 @@ export default function GenerateCodesPage() {
             <div class="divider"></div>
             <div class="center bold">Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.</div>
             <div class="qr-container">
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://buyagain.ng/redeem/ABCD-1234" alt="QR Code" style="width: 100px; height: 100px;" />
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://buyagain.ng/redeem/${couponCode}" alt="QR Code" style="width: 100px; height: 100px;" />
             </div>
-            <div class="center bold">ABCD-1234</div>
+            <div class="center bold">${couponCode}</div>
             <div class="center">Valid until ${expiryDate ? new Date(expiryDate).toLocaleDateString() : "(Expiring date)"}</div>
             <div class="center bold">© buyagain.ng</div>
             <div class="center">Business Phone: NO</div>
@@ -321,28 +351,34 @@ export default function GenerateCodesPage() {
   }
 
   const handleShareOnSocial = async () => {
-    const shareData = {
-      title: 'Discount Card',
-      text: `Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off at (Name of Business)! Scan the QR code: https://buyagain.ng/redeem/ABCD-1234`,
-      url: 'https://buyagain.ng/redeem/ABCD-1234'
-    }
+    setSharing(true)
+    try {
+      const couponCode = generatedCoupons[0]?.code || 'ABCD-1234'
+      const shareData = {
+        title: 'Discount Card',
+        text: `Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off at (Name of Business)! Scan the QR code: https://buyagain.ng/redeem/${couponCode}`,
+        url: `https://buyagain.ng/redeem/${couponCode}`
+      }
 
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches
 
-    if (!isPWA && navigator.share) {
-      try {
-        await navigator.share(shareData)
-      } catch (error) {
-        console.log('Error sharing:', error)
+      if (!isPWA && navigator.share) {
+        try {
+          await navigator.share(shareData)
+        } catch (error) {
+          console.log('Error sharing:', error)
+          fallbackShare()
+        }
+      } else {
         fallbackShare()
       }
-    } else {
-      fallbackShare()
-    }
 
-    function fallbackShare() {
-      const url = `https://wa.me/?text=${encodeURIComponent(shareData.text + ' ' + shareData.url)}`
-      window.open(url, '_blank')
+      function fallbackShare() {
+        const url = `https://wa.me/?text=${encodeURIComponent(shareData.text + ' ' + shareData.url)}`
+        window.open(url, '_blank')
+      }
+    } finally {
+      setSharing(false)
     }
   }
 
@@ -485,8 +521,15 @@ export default function GenerateCodesPage() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full font-bold text-base" size="lg">
-                  Generate Code
+                <Button type="submit" className="w-full font-bold text-base" size="lg" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    'Generate Code'
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -543,9 +586,15 @@ export default function GenerateCodesPage() {
                           </p>
                           {/* QR Code */}
                           <div className="bg-white p-2.5 rounded-lg border-4 border-black">
-                            <QRCode value={`https://buyagain.ng/redeem/ABCD-1234`} size={80} level="M" />
+                            <QRCode
+                              value={`https://buyagain.ng/redeem/${generatedCoupons[0]?.code || 'ABCD-1234'}`}
+                              size={80}
+                              level="M"
+                            />
                           </div>
-                          <p className="text-[10px] font-bold text-black">ABCD-1234</p>
+                          <p className="text-[10px] font-bold text-black">
+                            {generatedCoupons[0]?.code || 'ABCD-1234'}
+                          </p>
                         </div>
 
                         <div className="space-y-0.5 w-full">
@@ -578,7 +627,7 @@ export default function GenerateCodesPage() {
 
                   {/* Code Info */}
                   <div className="text-sm font-medium text-foreground space-y-1 bg-muted/50 p-3 rounded-lg border">
-                    <p>• {quantity} codes generated</p>
+                    <p>• {generatedCoupons.length} codes generated</p>
                     <p>
                       • {discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} discount
                     </p>
@@ -592,6 +641,18 @@ export default function GenerateCodesPage() {
                           })
                         : "Dec 31, 2025"}
                     </p>
+                    {generatedCoupons.length > 0 && (
+                      <div className="mt-2">
+                        <p className="font-semibold">Generated Codes:</p>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {generatedCoupons.map((coupon, index) => (
+                            <p key={index} className="font-mono text-xs bg-white px-2 py-1 rounded">
+                              {coupon.code}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Action Buttons */}
@@ -618,9 +679,19 @@ export default function GenerateCodesPage() {
                       className="w-full font-semibold text-base bg-transparent"
                       size="lg"
                       onClick={handlePrintPOS}
+                      disabled={printingPOS}
                     >
-                      <Printer className="h-5 w-5 mr-2" />
-                      Print with POS machine
+                      {printingPOS ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          Printing...
+                        </>
+                      ) : (
+                        <>
+                          <Printer className="h-5 w-5 mr-2" />
+                          Print with POS machine
+                        </>
+                      )}
                     </Button>
 
                     {/* Share on Socials */}

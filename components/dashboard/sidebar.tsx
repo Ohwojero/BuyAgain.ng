@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, QrCode, Users, BarChart3, Settings, Menu, X, Scan, UserCog } from "lucide-react"
+import { Home, QrCode, Users, BarChart3, Settings, Menu, X, Scan, UserCog, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/dashboard", label: "Overview", icon: Home },
   { href: "/dashboard/generate", label: "Generate Codes", icon: QrCode },
   { href: "/dashboard/scan", label: "Scan & Redeem", icon: Scan },
+  { href: "/dashboard/customers", label: "Customers", icon: User },
   { href: "/dashboard/referrals", label: "Referrals", icon: Users, badge: "Pro" },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/team", label: "Team", icon: UserCog, badge: "Pro" },

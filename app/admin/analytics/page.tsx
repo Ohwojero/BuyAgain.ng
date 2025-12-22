@@ -1,18 +1,90 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, Users, QrCode, DollarSign } from "lucide-react"
+import { useEffect, useState } from "react"
+import { adminApi } from "@/lib/api"
+
+interface AdminOverviewData {
+  totalMerchants: number
+  activeMerchants: number
+  totalRevenue: number
+  totalRedemptions: number
+  totalCodesGenerated: number
+  recentMerchants: Array<{
+    id: string
+    name: string
+    plan: string
+    joined: string
+  }>
+  planDistribution: Array<{
+    plan: string
+    count: number
+    percentage: number
+  }>
+}
 
 export default function AdminAnalyticsPage() {
-  const analytics = {
-    totalUsers: 1247,
-    activeUsers: 892,
-    codesGenerated: 125678,
-    redemptionRate: 68,
-    revenue: {
-      free: 0,
-      growth: 2485000,
-      scale: 1875000,
-    },
+  const [analytics, setAnalytics] = useState<AdminOverviewData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const response = await adminApi.getOverview()
+        if (response.success) {
+          setAnalytics(response.data as AdminOverviewData)
+        } else {
+          setError(response.error || 'Failed to fetch analytics')
+        }
+      } catch (err) {
+        setError('Network error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAnalytics()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Platform Analytics</h1>
+          <p className="text-muted-foreground mt-1">System-wide metrics and insights</p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading analytics...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !analytics) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Platform Analytics</h1>
+          <p className="text-muted-foreground mt-1">System-wide metrics and insights</p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-red-500">Error: {error || 'Failed to load analytics'}</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Calculate derived metrics
+  const redemptionRate = analytics.totalMerchants > 0
+    ? Math.round((analytics.totalRedemptions / analytics.totalMerchants) * 100)
+    : 0
+
+  // Mock revenue data (can be enhanced with real subscription data later)
+  const revenue = {
+    free: 0,
+    growth: 2485000,
+    scale: 1875000,
   }
 
   return (
@@ -38,8 +110,8 @@ export default function AdminAnalyticsPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">{analytics.totalUsers.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground mt-1">{analytics.activeUsers} active</p>
+                <div className="text-3xl font-bold text-foreground">{analytics.totalMerchants.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground mt-1">{analytics.activeMerchants} active</p>
               </CardContent>
             </Card>
 
@@ -49,7 +121,7 @@ export default function AdminAnalyticsPage() {
                 <QrCode className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">{analytics.codesGenerated.toLocaleString()}</div>
+                <div className="text-3xl font-bold text-foreground">{analytics.totalCodesGenerated.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground mt-1">All time</p>
               </CardContent>
             </Card>
@@ -60,7 +132,7 @@ export default function AdminAnalyticsPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">{analytics.redemptionRate}%</div>
+                <div className="text-3xl font-bold text-foreground">{redemptionRate}%</div>
                 <p className="text-xs text-muted-foreground mt-1">Platform average</p>
               </CardContent>
             </Card>
@@ -72,7 +144,7 @@ export default function AdminAnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-foreground">
-                  ₦{((analytics.revenue.growth + analytics.revenue.scale) / 1000000).toFixed(1)}M
+                  ₦{(analytics.totalRevenue / 1000000).toFixed(1)}M
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">This month</p>
               </CardContent>
@@ -103,16 +175,16 @@ export default function AdminAnalyticsPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-foreground">Growth Plan</span>
-                    <span className="text-muted-foreground">₦{(analytics.revenue.growth / 1000000).toFixed(2)}M</span>
+                    <span className="text-muted-foreground">₦{(revenue.growth / 1000000).toFixed(2)}M</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: "57%" }} />
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${analytics.planDistribution.find(p => p.plan === 'growth')?.percentage || 0}%` }} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-foreground">Scale Plan</span>
-                    <span className="text-muted-foreground">₦{(analytics.revenue.scale / 1000000).toFixed(2)}M</span>
+                    <span className="text-muted-foreground">₦{(revenue.scale / 1000000).toFixed(2)}M</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-primary rounded-full" style={{ width: "43%" }} />
@@ -132,16 +204,16 @@ export default function AdminAnalyticsPage() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total Codes Generated</span>
-                  <span className="font-medium text-foreground">{analytics.codesGenerated.toLocaleString()}</span>
+                  <span className="text-muted-foreground">Total Redemptions</span>
+                  <span className="font-medium text-foreground">{analytics.totalRedemptions.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Average Redemption Rate</span>
-                  <span className="font-medium text-foreground">{analytics.redemptionRate}%</span>
+                  <span className="font-medium text-foreground">{redemptionRate}%</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Active Merchants</span>
-                  <span className="font-medium text-foreground">{analytics.activeUsers}</span>
+                  <span className="font-medium text-foreground">{analytics.activeMerchants}</span>
                 </div>
               </div>
             </CardContent>
