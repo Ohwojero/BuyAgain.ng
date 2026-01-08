@@ -8,8 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { UserPlus, Mail, Shield, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { UserPlus, Mail, Shield, Trash2, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { teammembersApi } from "@/lib/api"
+import { TeamMember } from "@/lib/types"
+import { useToast } from "@/hooks/use-toast"
 
 export default function TeamPage() {
   const userPlan = "growth" // or "free" or "scale"
@@ -17,25 +20,37 @@ export default function TeamPage() {
   const teamLimit = userPlan === "growth" ? 2 : userPlan === "scale" ? 6 : 1
 
   const [showInviteForm, setShowInviteForm] = useState(false)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [loading, setLoading] = useState(true)
+  const [inviting, setInviting] = useState(false)
+  const { toast } = useToast()
 
-  const teamMembers = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john@mybusiness.com",
-      role: "owner",
-      status: "active",
-      joinedDate: "2025-01-01",
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane@mybusiness.com",
-      role: "admin",
-      status: "active",
-      joinedDate: "2025-01-15",
-    },
-  ]
+  useEffect(() => {
+    fetchTeamMembers()
+  }, [])
+
+  const fetchTeamMembers = async () => {
+    try {
+      const response = await teammembersApi.getAll()
+      if (response.success && response.data) {
+        setTeamMembers(response.data)
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to fetch team members",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch team members",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (!hasTeamAccess) {
     return (
@@ -68,11 +83,49 @@ export default function TeamPage() {
     )
   }
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInvite = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Handle invite logic
-    alert("Invitation sent!")
-    setShowInviteForm(false)
+    setInviting(true)
+
+    const formData = new FormData(e.currentTarget)
+    const email = formData.get('email') as string
+    const roleValue = formData.get('role') as string
+
+    // Map frontend role values to backend enum values
+    const roleMap: Record<string, string> = {
+      admin: 'ADMIN',
+      staff: 'STAFF',
+      viewer: 'VIEWER'
+    }
+
+    const role = roleMap[roleValue] || 'STAFF'
+
+    try {
+      const response = await teammembersApi.create({ email, role })
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Team member invitation sent successfully",
+        })
+        setShowInviteForm(false)
+        // Refresh the team members list
+        fetchTeamMembers()
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to send invitation",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send invitation",
+        variant: "destructive",
+      })
+    } finally {
+      setInviting(false)
+    }
   }
 
   return (
@@ -84,7 +137,7 @@ export default function TeamPage() {
             Manage your team ({teamMembers.length}/{teamLimit} members)
           </p>
         </div>
-        <Button onClick={() => setShowInviteForm(!showInviteForm)} disabled={teamMembers.length >= teamLimit}>
+        <Button onClick={() => setShowInviteForm(!showInviteForm)} disabled={teamMembers.length >= teamLimit || loading}>
           <UserPlus className="h-4 w-4 mr-2" />
           Invite Member
         </Button>
@@ -101,27 +154,32 @@ export default function TeamPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="invite-email">Email Address</Label>
-                  <Input id="invite-email" type="email" placeholder="team@mybusiness.com" required />
+                  <Input id="invite-email" name="email" type="email" placeholder="team@mybusiness.com" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="invite-role">Role</Label>
-                  <Select defaultValue="staff">
+                  <Select name="role" defaultValue="staff">
                     <SelectTrigger id="invite-role">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="viewer">Viewer</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="submit">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Invitation
+                <Button type="submit" disabled={inviting}>
+                  {inviting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4 mr-2" />
+                  )}
+                  {inviting ? "Sending..." : "Send Invitation"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowInviteForm(false)}>
+                <Button type="button" variant="outline" onClick={() => setShowInviteForm(false)} disabled={inviting}>
                   Cancel
                 </Button>
               </div>
@@ -136,49 +194,59 @@ export default function TeamPage() {
           <CardDescription>People who have access to this account</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {teamMembers.map((member) => (
-              <div key={member.id} className="flex items-center justify-between border-b border-border pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-sm font-semibold text-primary">
-                      {member.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-foreground">{member.name}</p>
-                      {member.role === "owner" && (
-                        <Badge variant="secondary" className="text-xs">
-                          Owner
-                        </Badge>
-                      )}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="ml-2">Loading team members...</span>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {teamMembers.map((member) => (
+                <div key={member.id} className="flex items-center justify-between border-b border-border pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-sm font-semibold text-primary">
+                        {member.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">{member.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Joined {new Date(member.joinedDate).toLocaleDateString()}
-                    </p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-foreground">{member.name}</p>
+                        {member.role === "MERCHANT" && (
+                          <Badge variant="secondary" className="text-xs">
+                            Owner
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{member.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {member.joinedAt
+                          ? `Joined ${new Date(member.joinedAt).toLocaleDateString()}`
+                          : `Invited ${new Date(member.invitedAt).toLocaleDateString()}`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {member.role !== "MERCHANT" && (
+                      <>
+                        <Button variant="outline" size="sm">
+                          <Shield className="h-4 w-4 mr-2" />
+                          {member.role === "ADMIN" ? "Admin" : member.role === "STAFF" ? "Staff" : "Viewer"}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {member.role !== "owner" && (
-                    <>
-                      <Button variant="outline" size="sm">
-                        <Shield className="h-4 w-4 mr-2" />
-                        {member.role === "admin" ? "Admin" : "Staff"}
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

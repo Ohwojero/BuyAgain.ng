@@ -33,9 +33,9 @@ self.addEventListener("install", (event) => {
 
 // Fetch event - serve from cache when offline
 self.addEventListener("fetch", (event) => {
-  // Skip API requests to avoid intercepting backend calls
+  // Skip non-GET requests and API requests to avoid intercepting backend calls
   const url = new URL(event.request.url)
-  if (url.hostname !== self.location.hostname || url.port !== self.location.port) {
+  if (event.request.method !== 'GET' || url.hostname !== self.location.hostname || url.port !== self.location.port) {
     return
   }
 

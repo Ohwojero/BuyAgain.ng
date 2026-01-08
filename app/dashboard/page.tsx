@@ -1,22 +1,78 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { QrCode, Users, TrendingUp, ArrowUpRight, BarChart3, Sparkles } from "lucide-react"
 import Link from "next/link"
+import { redemptionsApi } from "@/lib/api"
+import { Redemption } from "@/lib/types"
 
 export default function DashboardOverviewPage() {
-  // Mock data - will be replaced with real data from API
+  const [redemptions, setRedemptions] = useState<Redemption[]>([])
+  const [codesGenerated, setCodesGenerated] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const response = await redemptionsApi.getAll()
+        if (response.success && response.data) {
+          setRedemptions(response.data as Redemption[])
+        } else {
+          setError(response.error || 'Failed to fetch redemptions')
+        }
+      } catch (err) {
+        setError('Failed to fetch redemptions')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  // Mock data for limits and other stats
   const stats = {
-    codesGenerated: 12,
     codesLimit: 30,
-    codesRedeemed: 8,
     returningCustomers: 5,
     referrals: 0,
     tier: "Free",
   }
 
-  const usagePercentage = (stats.codesGenerated / stats.codesLimit) * 100
+  const usagePercentage = (codesGenerated / stats.codesLimit) * 100
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Track your loyalty program performance</p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading dashboard...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Track your loyalty program performance</p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-red-500">Error: {error}</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -36,7 +92,7 @@ export default function DashboardOverviewPage() {
               <div className="flex-1">
                 <h3 className="font-semibold text-foreground mb-1">You're running low on codes</h3>
                 <p className="text-sm text-muted-foreground mb-3">
-                  You've used {stats.codesGenerated} of {stats.codesLimit} codes this month. Consider upgrading to
+                  You've used {codesGenerated} of {stats.codesLimit} codes this month. Consider upgrading to
                   generate more.
                 </p>
                 <Button size="sm" asChild>
@@ -57,7 +113,7 @@ export default function DashboardOverviewPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-foreground">
-              {stats.codesGenerated}/{stats.codesLimit}
+              {codesGenerated}/{stats.codesLimit}
             </div>
             <Progress value={usagePercentage} className="mt-3" />
             <p className="text-xs text-muted-foreground mt-2">{Math.round(usagePercentage)}% of monthly limit</p>
@@ -70,10 +126,10 @@ export default function DashboardOverviewPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">{stats.codesRedeemed}</div>
+            <div className="text-3xl font-bold text-foreground">{redemptions.length}</div>
             <p className="text-xs text-muted-foreground mt-2">
-              {stats.codesGenerated > 0
-                ? `${Math.round((stats.codesRedeemed / stats.codesGenerated) * 100)}% redemption rate`
+              {codesGenerated > 0
+                ? `${Math.round((redemptions.length / codesGenerated) * 100)}% redemption rate`
                 : "No codes generated yet"}
             </p>
           </CardContent>
@@ -126,40 +182,29 @@ export default function DashboardOverviewPage() {
             <CardDescription>Latest redemptions and referrals</CardDescription>
           </CardHeader>
           <CardContent>
-            {stats.codesRedeemed === 0 ? (
+            {redemptions.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-sm text-muted-foreground">No activity yet</p>
                 <p className="text-xs text-muted-foreground mt-1">Generate and distribute codes to get started</p>
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm hover:bg-muted/50 p-2 rounded-lg transition-colors">
-                  <div>
-                    <p className="font-medium text-foreground">10% discount redeemed</p>
-                    <p className="text-xs text-muted-foreground">2 hours ago</p>
+                {redemptions.slice(0, 3).map((redemption) => (
+                  <div key={redemption.id} className="flex items-center justify-between text-sm hover:bg-muted/50 p-2 rounded-lg transition-colors">
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {redemption.discountAmount ? `₦${redemption.discountAmount}` : 'Discount'} redeemed
+                        {redemption.customerName && ` by ${redemption.customerName}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(redemption.redeemedAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">
+                      <ArrowUpRight className="h-3 w-3" />
+                    </Badge>
                   </div>
-                  <Badge variant="secondary">
-                    <ArrowUpRight className="h-3 w-3" />
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm hover:bg-muted/50 p-2 rounded-lg transition-colors">
-                  <div>
-                    <p className="font-medium text-foreground">15% discount redeemed</p>
-                    <p className="text-xs text-muted-foreground">5 hours ago</p>
-                  </div>
-                  <Badge variant="secondary">
-                    <ArrowUpRight className="h-3 w-3" />
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm hover:bg-muted/50 p-2 rounded-lg transition-colors">
-                  <div>
-                    <p className="font-medium text-foreground">20% discount redeemed</p>
-                    <p className="text-xs text-muted-foreground">1 day ago</p>
-                  </div>
-                  <Badge variant="secondary">
-                    <ArrowUpRight className="h-3 w-3" />
-                  </Badge>
-                </div>
+                ))}
               </div>
             )}
           </CardContent>

@@ -36,6 +36,8 @@ export default function GenerateCodesPage() {
   const [expiryDate, setExpiryDate] = useState("")
   const [terms, setTerms] = useState("")
   const [cardColor, setCardColor] = useState("#87CEEB")
+  const [referrerName, setReferrerName] = useState("")
+  const [referrerPhone, setReferrerPhone] = useState("")
   const [printMode, setPrintMode] = useState<"a4" | "pos">("a4")
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -46,10 +48,10 @@ export default function GenerateCodesPage() {
     try {
       // Map frontend values to backend API values
       const couponTypeMap = {
-        single: "SINGLE_USE",
+        single: "DISCOUNT",
         referral: "REFERRAL",
-        promo: "PROMO",
-        multiple: "MULTI_USER"
+        promo: "DISCOUNT",
+        multiple: "DISCOUNT"
       }
 
       const discountTypeMap = {
@@ -63,9 +65,13 @@ export default function GenerateCodesPage() {
         valueType: discountTypeMap[discountType as keyof typeof discountTypeMap],
         quantity: parseInt(quantity),
         expiryDate: expiryDate || undefined,
-        title: `${discountValue}${discountType === "percentage" ? "%" : "₦"} off discount`,
-        description: `Get ${discountValue}${discountType === "percentage" ? "%" : "₦"} off your next purchase`,
-        terms: terms || undefined
+        title: `${discountValue}${discountType === "percentage" ? "%" : "NGN"} off discount`,
+        description: `Get ${discountValue}${discountType === "percentage" ? "%" : "NGN"} off your next purchase`,
+        terms: terms || undefined,
+        ...(codeType === "referral" && {
+          referrerName: referrerName || undefined,
+          referrerPhone: referrerPhone || undefined,
+        }),
       }
 
       const response = await couponsApi.generate(payload)
@@ -508,6 +514,36 @@ export default function GenerateCodesPage() {
                   />
                 </div>
 
+                {/* Referrer Information (for referral codes) */}
+                {codeType === "referral" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="referrer-name" className="font-semibold">
+                        Referrer Name
+                      </Label>
+                      <Input
+                        id="referrer-name"
+                        value={referrerName}
+                        onChange={(e) => setReferrerName(e.target.value)}
+                        placeholder="Enter referrer's name"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="referrer-phone" className="font-semibold">
+                        Referrer Phone
+                      </Label>
+                      <Input
+                        id="referrer-phone"
+                        value={referrerPhone}
+                        onChange={(e) => setReferrerPhone(e.target.value)}
+                        placeholder="Enter referrer's phone number"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+
                 {/* Terms & Conditions */}
                 <div className="space-y-2">
                   <Label htmlFor="terms" className="font-semibold">
@@ -581,9 +617,9 @@ export default function GenerateCodesPage() {
                         </div>
 
                         <div className="text-center space-y-1.5">
-                          <p className="text-xs font-bold text-black">
-                            Get {discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.
-                          </p>
+                      <p className="text-xs font-bold text-black">
+                        Get {discountType === "percentage" ? `${discountValue}%` : `NGN${discountValue}`} off.
+                      </p>
                           {/* QR Code */}
                           <div className="bg-white p-2.5 rounded-lg border-4 border-black">
                             <QRCode

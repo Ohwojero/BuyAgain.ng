@@ -1,56 +1,103 @@
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Users, TrendingUp, Award, ArrowRight, Gift } from "lucide-react"
+import { Users, TrendingUp, Award, ArrowRight, Gift, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { referralsApi } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import { Referral } from "@/lib/types"
+
+interface ReferralStats {
+  totalReferrals: number
+  successfulConversions: number
+  pendingRewards: number
+  totalRewardsPaid: number
+}
+
+interface TopReferrer {
+  customerId: string
+  referrals: number
+  rewards: number
+}
 
 export default function ReferralsPage() {
-  // Mock data - would come from API based on user's plan
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [referralStats, setReferralStats] = useState<ReferralStats>({
+    totalReferrals: 0,
+    successfulConversions: 0,
+    pendingRewards: 0,
+    totalRewardsPaid: 0,
+  })
+  const [referralList, setReferralList] = useState<Referral[]>([])
+  const [topReferrers, setTopReferrers] = useState<TopReferrer[]>([])
+
+  // Mock user plan - in real app, get from context or API
   const userPlan = "growth" // or "free" or "scale"
   const hasReferralAccess = userPlan === "growth" || userPlan === "scale"
 
-  const referralStats = {
-    totalReferrals: 24,
-    successfulConversions: 18,
-    pendingRewards: 6,
-    totalRewardsPaid: 12,
-  }
+  useEffect(() => {
+    const fetchReferrals = async () => {
+      try {
+        setLoading(true)
+        const response = await referralsApi.getAll()
+        if (response.success && response.data) {
+          setReferralList(response.data)
+          // Calculate stats from data
+          const total = response.data.length
+          const converted = response.data.filter((r: Referral) => r.isCompleted).length
+          const pending = total - converted
+          setReferralStats({
+            totalReferrals: total,
+            successfulConversions: converted,
+            pendingRewards: pending,
+            totalRewardsPaid: converted,
+          })
+          // Calculate top referrers from actual data
+          const referrerMap = new Map<string, { referrals: number; rewards: number }>()
+          response.data.forEach((referral: Referral) => {
+            const key = referral.referrerName
+            const existing = referrerMap.get(key) || { referrals: 0, rewards: 0 }
+            referrerMap.set(key, {
+              referrals: existing.referrals + 1,
+              rewards: existing.rewards + referral.rewardAmount,
+            })
+          })
+          const topReferrersData = Array.from(referrerMap.entries())
+            .map(([customerId, data]) => ({ customerId, ...data }))
+            .sort((a, b) => b.referrals - a.referrals)
+            .slice(0, 3)
+          setTopReferrers(topReferrersData)
+        } else {
+          setError(response.error || "Failed to fetch referrals")
+          toast({
+            title: "Error",
+            description: response.error || "Failed to fetch referrals",
+            variant: "destructive",
+          })
+        }
+      } catch (err) {
+        setError("Network error")
+        toast({
+          title: "Error",
+          description: "Network error while fetching referrals",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  const referralList = [
-    {
-      id: 1,
-      referrerCode: "REF001",
-      referredCustomer: "Customer #045",
-      status: "converted",
-      referrerReward: 10,
-      dateReferred: "2025-01-10",
-      dateConverted: "2025-01-12",
-    },
-    {
-      id: 2,
-      referrerCode: "REF002",
-      referredCustomer: "Customer #046",
-      status: "pending",
-      referrerReward: 10,
-      dateReferred: "2025-01-15",
-      dateConverted: null,
-    },
-    {
-      id: 3,
-      referrerCode: "REF001",
-      referredCustomer: "Customer #047",
-      status: "converted",
-      referrerReward: 10,
-      dateReferred: "2025-01-18",
-      dateConverted: "2025-01-20",
-    },
-  ]
-
-  const topReferrers = [
-    { customerId: "Customer #001", referrals: 8, rewards: 80 },
-    { customerId: "Customer #012", referrals: 5, rewards: 50 },
-    { customerId: "Customer #023", referrals: 3, rewards: 30 },
-  ]
+    if (hasReferralAccess) {
+      fetchReferrals()
+    } else {
+      setLoading(false)
+    }
+  }, [hasReferralAccess, toast])
 
   if (!hasReferralAccess) {
     return (
@@ -77,6 +124,44 @@ export default function ReferralsPage() {
                 <a href="/pricing">View Plans</a>
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Referral System</h1>
+          <p className="text-muted-foreground mt-1">Track and reward customers who bring in new business</p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading referrals...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Referral System</h1>
+          <p className="text-muted-foreground mt-1">Track and reward customers who bring in new business</p>
+        </div>
+        <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900">
+          <CardContent className="pt-6">
+            <p className="text-red-600 dark:text-red-400">Error loading referrals: {error}</p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="mt-4"
+              variant="outline"
+            >
+              Retry
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -156,23 +241,23 @@ export default function ReferralsPage() {
                   <div key={referral.id} className="flex items-center justify-between border-b border-border pb-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-foreground">{referral.referredCustomer}</p>
+                        <p className="font-medium text-foreground">{referral.referredName || referral.referredPhone || 'Unknown'}</p>
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">via {referral.referrerCode}</span>
+                        <span className="text-sm text-muted-foreground">via {referral.referrerName}</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>Referred: {new Date(referral.dateReferred).toLocaleDateString()}</span>
-                        {referral.dateConverted && (
+                        <span>Referred: {new Date(referral.createdAt).toLocaleDateString()}</span>
+                        {referral.isCompleted && referral.completedAt && (
                           <>
                             <span>•</span>
-                            <span>Converted: {new Date(referral.dateConverted).toLocaleDateString()}</span>
+                            <span>Completed: {new Date(referral.completedAt).toLocaleDateString()}</span>
                           </>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
-                      {referral.status === "converted" ? (
-                        <Badge className="bg-primary text-primary-foreground">Reward: {referral.referrerReward}%</Badge>
+                      {referral.isCompleted ? (
+                        <Badge className="bg-primary text-primary-foreground">Reward: {referral.rewardAmount}%</Badge>
                       ) : (
                         <Badge variant="secondary">Pending</Badge>
                       )}

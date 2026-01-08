@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { QrCode, Camera, Keyboard, CheckCircle2, XCircle, CameraOff } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { BrowserQRCodeReader } from "@zxing/library"
+import { redemptionsApi } from "@/lib/api"
 
 type ScanResult = {
   success: boolean
@@ -30,6 +31,8 @@ export default function ScanPage() {
   const [cameraEnabled, setCameraEnabled] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [redeeming, setRedeeming] = useState(false)
+  const [redeemError, setRedeemError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const codeReaderRef = useRef<BrowserQRCodeReader | null>(null)
 
@@ -126,14 +129,35 @@ export default function ScanPage() {
     }
   }
 
-  const handleRedeem = () => {
-    // Mock redemption - will call API
-    alert("Discount applied successfully!")
-    setScanResult(null)
-    setManualCode("")
-    // Restart scanning if in camera mode
-    if (scanMode === "camera" && cameraEnabled) {
-      setScanning(true)
+  const handleRedeem = async () => {
+    if (!scanResult?.coupon?.code) return
+
+    setRedeeming(true)
+    setRedeemError(null)
+
+    try {
+      const response = await redemptionsApi.redeem({
+        code: scanResult.coupon.code,
+        customerName: scanResult.coupon.customer,
+        // Add other optional fields as needed
+      })
+
+      if (response.success) {
+        // Success - show confirmation and reset
+        alert("Discount applied successfully!")
+        setScanResult(null)
+        setManualCode("")
+        // Restart scanning if in camera mode
+        if (scanMode === "camera" && cameraEnabled) {
+          setScanning(true)
+        }
+      } else {
+        setRedeemError(response.error || "Failed to redeem coupon")
+      }
+    } catch (error) {
+      setRedeemError("Network error occurred")
+    } finally {
+      setRedeeming(false)
     }
   }
 
@@ -280,14 +304,20 @@ export default function ScanPage() {
                 </div>
 
                 <div className="pt-4 space-y-2">
-                  <Button onClick={handleRedeem} className="w-full" size="lg">
+                  {redeemError && (
+                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-destructive text-sm">
+                      {redeemError}
+                    </div>
+                  )}
+                  <Button onClick={handleRedeem} className="w-full" size="lg" disabled={redeeming}>
                     <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Apply Discount
+                    {redeeming ? "Applying..." : "Apply Discount"}
                   </Button>
                   <Button
                     onClick={() => {
                       setScanResult(null)
                       setManualCode("")
+                      setRedeemError(null)
                       // Restart scanning if in camera mode
                       if (scanMode === "camera" && cameraEnabled) {
                         setScanning(true)
@@ -295,6 +325,7 @@ export default function ScanPage() {
                     }}
                     variant="outline"
                     className="w-full bg-transparent"
+                    disabled={redeeming}
                   >
                     Cancel
                   </Button>

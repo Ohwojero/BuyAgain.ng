@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, Users, QrCode, Percent } from "lucide-react"
 import { useEffect, useState } from "react"
-import { analyticsApi } from "@/lib/api"
+import { analyticsApi, ApiResponse } from "@/lib/api"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface AnalyticsData {
   totalCoupons: number
@@ -24,19 +25,33 @@ interface AnalyticsData {
   }>
 }
 
+interface RedemptionTrend {
+  date: string
+  redemptions: number
+}
+
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const [redemptionTrends, setRedemptionTrends] = useState<RedemptionTrend[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
    useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const response = await analyticsApi.getAnalytics() as { success: boolean; data?: AnalyticsData; error?: string }
-        if (response.success && response.data) {
-          setAnalytics(response.data)
+        const [analyticsResponse, trendsResponse] = await Promise.all([
+          analyticsApi.getAnalytics() as Promise<ApiResponse<AnalyticsData>>,
+          analyticsApi.getRedemptionTrends() as Promise<ApiResponse<RedemptionTrend[]>>
+        ])
+
+        if (analyticsResponse.success && analyticsResponse.data) {
+          setAnalytics(analyticsResponse.data)
         } else {
-          setError(response.error || 'Failed to fetch analytics')
+          setError(analyticsResponse.error || 'Failed to fetch analytics')
+        }
+
+        if (trendsResponse.success && trendsResponse.data) {
+          setRedemptionTrends(trendsResponse.data)
         }
       } catch (err) {
         setError('Network error occurred')
@@ -80,13 +95,6 @@ export default function AnalyticsPage() {
   const redemptionRate = analytics.totalCoupons > 0
     ? Math.round((analytics.totalRedemptions / analytics.totalCoupons) * 100)
     : 0
-
-  // Mock data for customers and coupons (can be enhanced with real API endpoints later)
-  const topCustomers = [
-    { id: 1, name: "Customer #001", visits: 3 },
-    { id: 2, name: "Customer #002", visits: 2 },
-    { id: 3, name: "Customer #003", visits: 2 },
-  ]
 
   return (
     <div className="space-y-6">
@@ -150,15 +158,41 @@ export default function AnalyticsPage() {
             </Card>
           </div>
 
-          {/* Charts Placeholder */}
+          {/* Redemption Trends Chart */}
           <Card className="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20">
             <CardHeader>
               <CardTitle>Redemption Trends</CardTitle>
               <CardDescription>Daily redemption activity over the last 30 days</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center bg-muted/50 rounded-lg">
-                <p className="text-muted-foreground">Chart visualization coming soon</p>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={redemptionTrends}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    />
+                    <YAxis />
+                    <Tooltip
+                      labelFormatter={(value) => new Date(value).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                      formatter={(value: number) => [value, 'Redemptions']}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="redemptions"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#ffffff' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
@@ -194,7 +228,7 @@ export default function AnalyticsPage() {
         </TabsContent>
 
         <TabsContent value="coupons" className="space-y-6">
-          <Card className="bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-950/20 dark:to-red-950/20 border-rose-200 dark:border-rose-900">
+          <Card className="bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-950/20 dark:to-rose-950/20 border-rose-200 dark:border-rose-900">
             <CardHeader>
               <CardTitle>Coupon Performance</CardTitle>
               <CardDescription>How different discount levels are performing</CardDescription>

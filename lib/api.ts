@@ -1,3 +1,5 @@
+import { Redemption, Referral, TeamMember } from './types';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:3001'
@@ -163,7 +165,7 @@ export const couponsApi = {
 
 // Redemptions API
 export const redemptionsApi = {
-  getAll: () =>
+  getAll: (): Promise<ApiResponse<Redemption[]>> =>
     api.get('/redemptions'),
 
   redeem: (data: any) =>
@@ -180,6 +182,9 @@ export const analyticsApi = {
 
   getAnalytics: () =>
     api.get('/analytics'),
+
+  getRedemptionTrends: () =>
+    api.get('/analytics/redemption-trends'),
 };
 
 // Admin API
@@ -211,7 +216,7 @@ export const teammembersApi = {
   create: (data: any) =>
     api.post('/teammembers', data),
 
-  getAll: () =>
+  getAll: (): Promise<ApiResponse<TeamMember[]>> =>
     api.get('/teammembers'),
 
   getById: (id: string) =>
@@ -238,6 +243,6 @@ export const referralsApi = {
   create: (data: any) =>
     api.post('/referrals', data),
 
-  getAll: () =>
+  getAll: (): Promise<ApiResponse<Referral[]>> =>
     api.get('/referrals'),
 };

@@ -1,56 +1,61 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Eye, Ban, CheckCircle } from "lucide-react"
+import { Search, Eye, Ban, CheckCircle, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { merchantsApi } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+
+interface Merchant {
+  id: string
+  businessName: string
+  email: string
+  tier: string
+  isActive: boolean
+  createdAt: string
+  coupons: any[]
+  redemptions: any[]
+}
 
 export default function MerchantsPage() {
-  const merchants = [
-    {
-      id: 1,
-      name: "Beauty Salon Lagos",
-      email: "contact@beautysalon.com",
-      plan: "Growth",
-      status: "active",
-      codesGenerated: 245,
-      redemptions: 189,
-      joined: "2024-12-01",
-    },
-    {
-      id: 2,
-      name: "Chicken Republic",
-      email: "admin@chickenrepublic.com",
-      plan: "Scale",
-      status: "active",
-      codesGenerated: 1567,
-      redemptions: 1234,
-      joined: "2024-11-15",
-    },
-    {
-      id: 3,
-      name: "POS Agent Ikeja",
-      email: "ikeja@pos.com",
-      plan: "Free",
-      status: "active",
-      codesGenerated: 28,
-      redemptions: 22,
-      joined: "2025-01-10",
-    },
-    {
-      id: 4,
-      name: "Fashion Store",
-      email: "info@fashionstore.com",
-      plan: "Growth",
-      status: "suspended",
-      codesGenerated: 156,
-      redemptions: 98,
-      joined: "2024-10-05",
-    },
-  ]
+  const [merchants, setMerchants] = useState<Merchant[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    const fetchMerchants = async () => {
+      try {
+        const response = await merchantsApi.getAll() as { success: boolean; data?: Merchant[]; error?: string }
+        if (response.success && response.data) {
+          setMerchants(response.data)
+        } else {
+          setError(response.error || "Failed to fetch merchants")
+          toast({
+            title: "Error",
+            description: response.error || "Failed to fetch merchants",
+            variant: "destructive",
+          })
+        }
+      } catch (err) {
+        setError("Network error")
+        toast({
+          title: "Error",
+          description: "Network error while fetching merchants",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchMerchants()
+  }, [toast])
 
   return (
     <div className="space-y-6">
@@ -102,50 +107,71 @@ export default function MerchantsPage() {
           <CardDescription>{merchants.length} total merchants</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {merchants.map((merchant) => (
-              <div key={merchant.id} className="flex items-center justify-between border-b border-border pb-4">
-                <div className="space-y-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Loading merchants...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-destructive">{error}</p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="mt-4"
+              >
+                Retry
+              </Button>
+            </div>
+          ) : merchants.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No merchants found.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {merchants.map((merchant) => (
+                <div key={merchant.id} className="flex items-center justify-between border-b border-border pb-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground">{merchant.businessName}</p>
+                      <Badge
+                        variant={merchant.isActive ? "default" : "destructive"}
+                        className={merchant.isActive ? "bg-primary text-primary-foreground" : ""}
+                      >
+                        {merchant.isActive ? "active" : "inactive"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{merchant.email}</p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>Plan: {merchant.tier}</span>
+                      <span>•</span>
+                      <span>Codes: {merchant.coupons.length}</span>
+                      <span>•</span>
+                      <span>Redemptions: {merchant.redemptions.length}</span>
+                      <span>•</span>
+                      <span>Joined: {new Date(merchant.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-foreground">{merchant.name}</p>
-                    <Badge
-                      variant={merchant.status === "active" ? "default" : "destructive"}
-                      className={merchant.status === "active" ? "bg-primary text-primary-foreground" : ""}
-                    >
-                      {merchant.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{merchant.email}</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>Plan: {merchant.plan}</span>
-                    <span>•</span>
-                    <span>Codes: {merchant.codesGenerated}</span>
-                    <span>•</span>
-                    <span>Redemptions: {merchant.redemptions}</span>
-                    <span>•</span>
-                    <span>Joined: {new Date(merchant.joined).toLocaleDateString()}</span>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/admin/merchants/${merchant.id}`}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </Link>
+                    </Button>
+                    {merchant.isActive ? (
+                      <Button variant="ghost" size="sm" className="text-destructive">
+                        <Ban className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="text-primary">
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admin/merchants/${merchant.id}`}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Link>
-                  </Button>
-                  {merchant.status === "active" ? (
-                    <Button variant="ghost" size="sm" className="text-destructive">
-                      <Ban className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button variant="ghost" size="sm" className="text-primary">
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
