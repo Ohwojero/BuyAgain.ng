@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { QrCode, Users, TrendingUp, ArrowUpRight, BarChart3, Sparkles } from "lucide-react"
 import Link from "next/link"
-import { redemptionsApi } from "@/lib/api"
+import { redemptionsApi, analyticsApi } from "@/lib/api"
 import { Redemption } from "@/lib/types"
 
 export default function DashboardOverviewPage() {
@@ -15,19 +15,32 @@ export default function DashboardOverviewPage() {
   const [codesGenerated, setCodesGenerated] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [analytics, setAnalytics] = useState<any>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const response = await redemptionsApi.getAll()
-        if (response.success && response.data) {
-          setRedemptions(response.data as Redemption[])
+        const [redemptionsResponse, analyticsResponse] = await Promise.all([
+          redemptionsApi.getAll(),
+          analyticsApi.getAnalytics()
+        ])
+
+        if (redemptionsResponse.success && redemptionsResponse.data) {
+          setRedemptions(redemptionsResponse.data as Redemption[])
         } else {
-          setError(response.error || 'Failed to fetch redemptions')
+          setError(redemptionsResponse.error || 'Failed to fetch redemptions')
+        }
+
+        if (analyticsResponse.success && analyticsResponse.data) {
+          setAnalytics(analyticsResponse.data)
+          setCodesGenerated(analyticsResponse.data.totalCoupons || 0)
+        } else {
+          // If analytics fails, still proceed with redemptions
+          console.error('Failed to fetch analytics:', analyticsResponse.error)
         }
       } catch (err) {
-        setError('Failed to fetch redemptions')
+        setError('Failed to fetch data')
       } finally {
         setLoading(false)
       }
@@ -39,8 +52,8 @@ export default function DashboardOverviewPage() {
   // Mock data for limits and other stats
   const stats = {
     codesLimit: 30,
-    returningCustomers: 5,
-    referrals: 0,
+    returningCustomers: analytics?.returningCustomers || 0,
+    referrals: analytics?.totalReferrals || 0,
     tier: "Free",
   }
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Users, TrendingUp, Award, ArrowRight, Gift, Loader2 } from "lucide-react"
+import { Users, TrendingUp, Award, Gift, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { referralsApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
@@ -45,26 +45,33 @@ export default function ReferralsPage() {
       try {
         setLoading(true)
         const response = await referralsApi.getAll()
-        if (response.success && response.data) {
-          setReferralList(response.data)
-          // Calculate stats from data
-          const total = response.data.length
-          const converted = response.data.filter((r: Referral) => r.isCompleted).length
-          const pending = total - converted
+        if (response.success && response.data && Array.isArray(response.data)) {
+          const referrals = response.data
+          setReferralList(referrals)
+
+          // Calculate stats from referral data
+          const totalReferrals = referrals.length
+          const successfulConversions = referrals.filter(r => r.isCompleted).length
+          const pendingRewards = totalReferrals - successfulConversions
+          const totalRewardsPaid = referrals
+            .filter(r => r.isCompleted)
+            .reduce((sum, r) => sum + r.rewardAmount, 0)
+
           setReferralStats({
-            totalReferrals: total,
-            successfulConversions: converted,
-            pendingRewards: pending,
-            totalRewardsPaid: converted,
+            totalReferrals,
+            successfulConversions,
+            pendingRewards,
+            totalRewardsPaid,
           })
-          // Calculate top referrers from actual data
+
+          // Calculate top referrers from referral data
           const referrerMap = new Map<string, { referrals: number; rewards: number }>()
-          response.data.forEach((referral: Referral) => {
+          referrals.forEach((referral: Referral) => {
             const key = referral.referrerName
             const existing = referrerMap.get(key) || { referrals: 0, rewards: 0 }
             referrerMap.set(key, {
               referrals: existing.referrals + 1,
-              rewards: existing.rewards + referral.rewardAmount,
+              rewards: existing.rewards + (referral.isCompleted ? referral.rewardAmount : 0),
             })
           })
           const topReferrersData = Array.from(referrerMap.entries())
@@ -139,7 +146,7 @@ export default function ReferralsPage() {
         </div>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading referrals...</span>
+          <span className="ml-2">Loading referral codes...</span>
         </div>
       </div>
     )
@@ -195,7 +202,7 @@ export default function ReferralsPage() {
           <CardContent>
             <div className="text-3xl font-bold text-foreground">{referralStats.successfulConversions}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {Math.round((referralStats.successfulConversions / referralStats.totalReferrals) * 100)}% conversion rate
+              {referralStats.totalReferrals > 0 ? Math.round((referralStats.successfulConversions / referralStats.totalReferrals) * 100) : 0}% conversion rate
             </p>
           </CardContent>
         </Card>
@@ -232,21 +239,31 @@ export default function ReferralsPage() {
         <TabsContent value="all" className="space-y-6">
           <Card className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/20 border-sky-200 dark:border-sky-900">
             <CardHeader>
-              <CardTitle>Referral Activity</CardTitle>
-              <CardDescription>Track all customer referrals and their status</CardDescription>
+              <CardTitle>All Referrals</CardTitle>
+              <CardDescription>Track all referral activities and conversions</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {referralList.map((referral) => (
+                {referralList.map((referral: Referral) => (
                   <div key={referral.id} className="flex items-center justify-between border-b border-border pb-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-foreground">{referral.referredName || referral.referredPhone || 'Unknown'}</p>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">via {referral.referrerName}</span>
+                        <p className="font-medium text-foreground">{referral.referrerName}</p>
+                        <Badge variant={referral.isCompleted ? "default" : "secondary"} className="text-xs">
+                          {referral.isCompleted ? "Completed" : "Pending"}
+                        </Badge>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>Referred: {new Date(referral.createdAt).toLocaleDateString()}</span>
+                        <span>Referred: {referral.referredName || 'Not specified'}</span>
+                        {referral.referredPhone && (
+                          <>
+                            <span>•</span>
+                            <span>{referral.referredPhone}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>Created: {new Date(referral.createdAt).toLocaleDateString()}</span>
                         {referral.isCompleted && referral.completedAt && (
                           <>
                             <span>•</span>
@@ -256,11 +273,8 @@ export default function ReferralsPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      {referral.isCompleted ? (
-                        <Badge className="bg-primary text-primary-foreground">Reward: {referral.rewardAmount}%</Badge>
-                      ) : (
-                        <Badge variant="secondary">Pending</Badge>
-                      )}
+                      <p className="text-sm font-bold text-foreground">₦{referral.rewardAmount}</p>
+                      <p className="text-xs text-muted-foreground">Reward</p>
                     </div>
                   </div>
                 ))}
@@ -289,7 +303,7 @@ export default function ReferralsPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-foreground">{referrer.rewards}%</p>
+                      <p className="text-lg font-bold text-foreground">₦{referrer.rewards}</p>
                       <p className="text-xs text-muted-foreground">Total rewards</p>
                     </div>
                   </div>
