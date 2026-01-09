@@ -16,7 +16,6 @@ export function Footer() {
             <p className="text-sm text-muted-foreground max-w-xs mb-4">
               Digital loyalty and referral system for Nigerian retail businesses. Keep customers coming back.
             </p>
-
             <div className="flex items-center gap-3 mb-4">
               <a
                 href="https://facebook.com"
