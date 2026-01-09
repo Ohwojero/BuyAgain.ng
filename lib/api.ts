@@ -125,6 +125,9 @@ export const authApi = {
 
   getProfile: () =>
     api.get('/auth/profile'),
+
+  verifyEmail: (token: string) =>
+    api.post('/auth/verify-email', { token }),
 };
 
 // Merchants API
