@@ -256,4 +256,10 @@ export const referralsApi = {
 
   getAll: (): Promise<ApiResponse<Referral[]>> =>
     api.get('/referrals'),
+
+  getByCode: (code: string) =>
+    api.get(`/referrals/code/${code}`),
+
+  redeem: (code: string, data: any) =>
+    api.post(`/referrals/code/${code}/redeem`, data),
 };
