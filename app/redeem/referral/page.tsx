@@ -4,12 +4,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Store, Tag, CheckCircle2, Share2, Users, Gift } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { referralsApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardContent className="p-8 text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Loading referral...</p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 export default function RedeemReferralPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <RedeemReferralContent />
+    </Suspense>
+  )
+}
+
+function RedeemReferralContent() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const [isSaving, setIsSaving] = useState(false)
