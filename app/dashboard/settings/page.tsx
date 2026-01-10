@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { usePlan } from "@/lib/plan-context"
 import { Check } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { toast } from 'react-toastify'
+import { authApi } from "@/lib/api"
 
 const plans = [
   {
@@ -53,6 +55,14 @@ const plans = [
 export default function SettingsPage() {
   const { currentPlan, planName, updatePlan, planLimits } = usePlan()
   const [isChangingPlan, setIsChangingPlan] = useState(false)
+  const [preferences, setPreferences] = useState({
+    emailNotifications: true,
+    redemptionAlerts: true,
+    usageWarnings: true,
+    whatsappNotifications: false,
+  })
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(true)
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false)
 
   const handlePlanChange = (planId: "free" | "growth" | "scale") => {
     console.log("[v0] Plan change clicked:", planId)
@@ -60,12 +70,54 @@ export default function SettingsPage() {
     setIsChangingPlan(true)
 
     updatePlan(planId)
-    console.log("[v0] UpdatePlan called with:", planId)
+    console.log("UpdatePlan called with:", planId)
 
     setTimeout(() => {
       setIsChangingPlan(false)
-      console.log("[v0] Plan change complete")
+      console.log("Plan change complete")
     }, 500)
+  }
+
+  // Load preferences on component mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const response: Awaited<ReturnType<typeof authApi.getProfile>> = await authApi.getProfile()
+        if (response.success && response.data?.user) {
+          const user = response.data.user
+          setPreferences({
+            emailNotifications: user.emailNotifications ?? true,
+            redemptionAlerts: user.redemptionAlerts ?? true,
+            usageWarnings: user.usageWarnings ?? true,
+            whatsappNotifications: user.whatsappNotifications ?? false,
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load preferences:', error)
+        toast.error("Failed to load notification preferences")
+      } finally {
+        setIsLoadingPreferences(false)
+      }
+    }
+
+    loadPreferences()
+  }, [])
+
+  const handleSavePreferences = async () => {
+    setIsSavingPreferences(true)
+    try {
+      const response = await authApi.updatePreferences(preferences)
+      if (response.success) {
+        toast.success("Notification preferences updated successfully")
+      } else {
+        throw new Error(response.error || 'Failed to update preferences')
+      }
+    } catch (error) {
+      console.error('Failed to save preferences:', error)
+      toast.error("Failed to update notification preferences")
+    } finally {
+      setIsSavingPreferences(false)
+    }
   }
 
   console.log("[v0] Settings page - Current plan:", currentPlan, planName)
@@ -252,41 +304,79 @@ export default function SettingsPage() {
               <CardDescription>Choose what updates you want to receive</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="email-notifications">Email Notifications</Label>
-                  <p className="text-sm text-muted-foreground">Receive updates via email</p>
+              {isLoadingPreferences ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground">Loading preferences...</p>
                 </div>
-                <Switch id="email-notifications" defaultChecked />
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="email-notifications">Email Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Receive updates via email</p>
+                    </div>
+                    <Switch
+                      id="email-notifications"
+                      checked={preferences.emailNotifications}
+                      onCheckedChange={(checked) =>
+                        setPreferences(prev => ({ ...prev, emailNotifications: checked }))
+                      }
+                    />
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="redemption-alerts">Redemption Alerts</Label>
-                  <p className="text-sm text-muted-foreground">Get notified when codes are redeemed</p>
-                </div>
-                <Switch id="redemption-alerts" defaultChecked />
-              </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="redemption-alerts">Redemption Alerts</Label>
+                      <p className="text-sm text-muted-foreground">Get notified when codes are redeemed</p>
+                    </div>
+                    <Switch
+                      id="redemption-alerts"
+                      checked={preferences.redemptionAlerts}
+                      onCheckedChange={(checked) =>
+                        setPreferences(prev => ({ ...prev, redemptionAlerts: checked }))
+                      }
+                    />
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="usage-warnings">Usage Warnings</Label>
-                  <p className="text-sm text-muted-foreground">Alert when approaching usage limits</p>
-                </div>
-                <Switch id="usage-warnings" defaultChecked />
-              </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="usage-warnings">Usage Warnings</Label>
+                      <p className="text-sm text-muted-foreground">Alert when approaching usage limits</p>
+                    </div>
+                    <Switch
+                      id="usage-warnings"
+                      checked={preferences.usageWarnings}
+                      onCheckedChange={(checked) =>
+                        setPreferences(prev => ({ ...prev, usageWarnings: checked }))
+                      }
+                    />
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="whatsapp-notifications">WhatsApp Notifications</Label>
-                  <p className="text-sm text-muted-foreground">Receive updates via WhatsApp (Growth+ only)</p>
-                </div>
-                <Switch id="whatsapp-notifications" disabled />
-              </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="whatsapp-notifications">WhatsApp Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Receive updates via WhatsApp (Growth+ only)</p>
+                    </div>
+                    <Switch
+                      id="whatsapp-notifications"
+                      checked={preferences.whatsappNotifications}
+                      disabled={!planLimits.hasWhatsApp}
+                      onCheckedChange={(checked) =>
+                        setPreferences(prev => ({ ...prev, whatsappNotifications: checked }))
+                      }
+                    />
+                  </div>
 
-              <div className="pt-4 border-t border-border">
-                <Button>Save Preferences</Button>
-              </div>
+                  <div className="pt-4 border-t border-border">
+                    <Button
+                      onClick={handleSavePreferences}
+                      disabled={isSavingPreferences}
+                    >
+                      {isSavingPreferences ? "Saving..." : "Save Preferences"}
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -141,11 +141,11 @@ export default function RedeemReferralPage() {
             <div className="mx-auto h-16 w-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
               <Tag className="h-8 w-8 text-red-600" />
             </div>
-            <CardTitle className="text-2xl text-red-600">Invalid Referral Code</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-        </Card>
+          <CardTitle className="text-2xl text-red-600">Invalid Referral Code</CardTitle>
+          <CardDescription>{error}</CardDescription>
+        </CardHeader>
       </Card>
+    </div>
     )
   }
 

@@ -1,4 +1,4 @@
-import { Redemption, Referral, TeamMember } from './types';
+import { Redemption, Referral, TeamMember, User, Merchant } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== 'undefined' && window.location.hostname === 'localhost'
@@ -123,8 +123,16 @@ export const authApi = {
   logout: () =>
     api.post('/auth/logout'),
 
-  getProfile: () =>
+  getProfile: (): Promise<ApiResponse<{ user: User; merchant: Merchant }>> =>
     api.get('/auth/profile'),
+
+  updatePreferences: (preferences: {
+    emailNotifications: boolean;
+    redemptionAlerts: boolean;
+    usageWarnings: boolean;
+    whatsappNotifications: boolean;
+  }) =>
+    api.put('/auth/preferences', preferences),
 
   verifyEmail: (token: string) =>
     api.post('/auth/verify-email', { token }),

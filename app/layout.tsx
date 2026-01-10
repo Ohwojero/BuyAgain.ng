@@ -4,6 +4,8 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { InstallPWA } from "./install-pwa"
 import { RegisterServiceWorker } from "./register-sw"
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -68,6 +70,7 @@ export default function RootLayout({
         <InstallPWA />
         <RegisterServiceWorker />
         <Analytics />
+        <ToastContainer />
       </body>
     </html>
   )

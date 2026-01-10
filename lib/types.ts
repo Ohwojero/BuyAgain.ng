@@ -35,3 +35,26 @@ export interface TeamMember {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Merchant {
+  id: string;
+  businessName: string;
+  email: string;
+  phone: string;
+  businessType: string;
+  address: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  role: 'MERCHANT' | 'ADMIN' | 'STAFF' | 'VIEWER';
+  merchantId: string;
+  emailVerified: boolean;
+  lastLogin?: string;
+  emailNotifications?: boolean;
+  redemptionAlerts?: boolean;
+  usageWarnings?: boolean;
+  whatsappNotifications?: boolean;
+  merchant?: Merchant;
+}
