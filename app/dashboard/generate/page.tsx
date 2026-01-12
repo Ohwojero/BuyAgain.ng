@@ -139,8 +139,8 @@ export default function GenerateCodesPage() {
     // Create a temporary div to render the QR code
     const tempDiv = document.createElement('div')
     tempDiv.style.display = 'inline-block'
-    tempDiv.style.width = '60px'
-    tempDiv.style.height = '60px'
+    tempDiv.style.width = '50px'
+    tempDiv.style.height = '40px'
 
     // Use ReactDOM to render the QR code component
     const React = (await import('react')).default
@@ -150,7 +150,7 @@ export default function GenerateCodesPage() {
     const root = ReactDOM.createRoot(tempDiv)
     root.render(React.createElement(QRCode, {
       value: qrValue,
-      size: 60,
+      size: 48,
       level: 'M'
     }))
 
@@ -195,7 +195,7 @@ export default function GenerateCodesPage() {
           </div>
           <div style="text-align: center;">
             <p style="font-weight: bold; color: black; margin-bottom: 2px;">Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.</p>
-            <div style="background: white; padding: 2px 6px 2px 2px; border-radius: 4px; border: 2px solid black; display: inline-block; margin-bottom: 2px;">
+            <div style="background: white; padding: 2px 2px 2px 2px; border-radius: 4px; border: 2px solid black; display: inline-block; margin-bottom: 2px;">
               ${qrHtml}
             </div>
             <p style="font-weight: bold; color: black; margin-bottom: 2px;">${couponCode}</p>
@@ -284,7 +284,7 @@ export default function GenerateCodesPage() {
               </div>
               <div style="text-align: center;">
                 <p style="font-weight: bold; color: black; margin-bottom: 2px;">Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.</p>
-                <div style="background: white; padding: 2px 6px 2px 2px; border-radius: 4px; border: 2px solid black; display: inline-block; margin-bottom: 2px;">
+                <div style="background:white; padding: 2px 6px 2px 2px; border-radius: 4px; border: 6px solid black; display: inline-block; margin-bottom: 2px;">
                   <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIvPgo8dGV4dCB4PSIxMCIgeT0iMTIiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzAwMDAwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UTwvdGV4dD4KPHRleHQgeD0iMTAiIHk9IjE4IiBmb250LXNpemU9IjYiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkM8L3RleHQ+Cjwvc3ZnPg==" alt="QR Code" style="width: 60px; height: 60px;" />
                 </div>
                 <p style="font-weight: bold; color: black; margin-bottom: 2px;">${coupon?.code || 'ERROR'}</p>
@@ -824,10 +824,10 @@ export default function GenerateCodesPage() {
                             Get {discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.
                           </p>
                           {/* QR Code */}
-                          <div className="bg-white p-2.5 rounded-lg border-4 border-black">
+                          <div className="bg-white p-0.5 rounded border border-black max-w-fit mx-auto">
                             <QRCode
                               value={`https://buyagain.ng/redeem/${generatedCoupons[0]?.code || 'ABCD-1234'}`}
-                              size={80}
+                              size={30}
                               level="M"
                             />
                           </div>
