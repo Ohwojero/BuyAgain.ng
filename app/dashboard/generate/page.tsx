@@ -9,14 +9,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Download, Printer, Percent, Clock, Maximize2, Share2, Palette, Loader2 } from "lucide-react"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { usePlan } from "@/lib/plan-context"
 import QRCode from "react-qr-code"
 import jsPDF from "jspdf"
-import { couponsApi } from "@/lib/api"
+import { couponsApi, authApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-
+import qrcode from "qrcode"
 
 export default function GenerateCodesPage() {
   const router = useRouter()
@@ -39,7 +39,26 @@ export default function GenerateCodesPage() {
   const [referrerName, setReferrerName] = useState("")
   const [referrerPhone, setReferrerPhone] = useState("")
   const [printMode, setPrintMode] = useState<"a4" | "pos">("a4")
+  const [businessName, setBusinessName] = useState("(Name of Business)")
+  const [businessPhone, setBusinessPhone] = useState("NO")
   const cardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const fetchMerchantProfile = async () => {
+      try {
+        const response = await authApi.getProfile()
+        if (response.success && response.data) {
+          const { merchant } = response.data
+          setBusinessName(merchant.businessName || "(Name of Business)")
+          setBusinessPhone(merchant.phone || "NO")
+        }
+      } catch (error) {
+        console.error('Failed to fetch merchant profile:', error)
+      }
+    }
+
+    fetchMerchantProfile()
+  }, [])
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -112,40 +131,112 @@ export default function GenerateCodesPage() {
     return true
   }
 
-  const handlePrintNow = () => {
+  const generateCardHtml = async (coupon: any) => {
+    const couponCode = coupon?.code || 'ABCD-1234'
+
+    let qrDataUrl = ''
+    try {
+      const qrResult = await qrcode.toDataURL(`https://buyagain.ng/redeem/${couponCode}`)
+      qrDataUrl = qrResult as unknown as string
+    } catch (error) {
+      console.warn('Could not generate QR code for print, using placeholder')
+      qrDataUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIvPgo8dGV4dCB4PSIxMCIgeT0iMTIiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzAwMDAwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UTwvdGV4dD4KPHRleHQgeD0iMTAiIHk9IjE4IiBmb250LXNpemU9IjYiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkM8L3RleHQ+Cjwvc3ZnPg=='
+    }
+
+    return `
+      <div class="print-card" style="
+        background: white;
+        border-radius: 16px;
+        border: 4px solid #d1d5db;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: 58% 42%;
+        width: 100%;
+        max-width: 100mm;
+        height: 50mm;
+        font-size: 8px;
+      ">
+        <div style="background: white; padding: 4px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <p style="font-weight: bold; color: black; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">${businessName}</p>
+            <h2 style="font-weight: 900; color: black; line-height: 1.1; margin-bottom: 2px;">Thank you for your patronage!</h2>
+            <p style="color: rgba(0,0,0,0.8); font-weight: 500; margin-bottom: 2px;">Here's a special Discount for your next visit</p>
+            <p style="color: rgba(0,0,0,0.6); font-style: italic; margin-bottom: 4px;">${terms || "(discount terms / conditions)"}</p>
+          </div>
+          <p style="font-weight: bold; color: black; text-transform: uppercase; letter-spacing: 0.05em; border-top: 1px solid rgba(0,0,0,0.2); padding-top: 2px;">Business Phone: ${businessPhone}</p>
+        </div>
+        <div style="padding: 3px; display: flex; flex-direction: column; justify-content: space-between; background-color: ${cardColor};">
+          <div style="display: flex; justify-content: space-between; width: 100%;">
+            <span style="font-size: 8px;">%</span>
+            <span style="font-size: 8px;">🔍</span>
+            <span style="font-size: 8px;">⏰</span>
+          </div>
+          <div style="text-align: center;">
+            <p style="font-weight: bold; color: black; margin-bottom: 2px;">Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.</p>
+            <div style="background: white; padding: 2px; border-radius: 4px; border: 2px solid black; display: inline-block; margin-bottom: 2px;">
+              <img src="${qrDataUrl}" alt="QR Code" style="width: 20px; height: 20px;" />
+            </div>
+            <p style="font-weight: bold; color: black; margin-bottom: 2px;">${couponCode}</p>
+          </div>
+          <div>
+            <p style="color: rgba(0,0,0,0.9); font-weight: 500; text-align: center; margin-bottom: 1px;">Valid until ${expiryDate ? new Date(expiryDate).toLocaleDateString() : "(Expiring date)"}</p>
+            <p style="font-weight: bold; color: black; text-align: center;">© buyagain.ng</p>
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  const handlePrintNow = async () => {
     setPrintMode("a4")
+
+    if (!generatedCoupons || generatedCoupons.length === 0) {
+      alert('No coupons generated to print.')
+      return
+    }
 
     // Create a print-specific stylesheet
     const printStyle = document.createElement('style')
     printStyle.innerHTML = `
       @media print {
         body * { visibility: hidden; }
-        .print-card, .print-card * { visibility: visible; }
-        .print-card {
+        .print-cards, .print-cards * { visibility: visible; }
+        .print-cards {
           position: absolute;
           left: 0;
           top: 0;
           width: 100%;
           max-width: 210mm;
           margin: 0 auto;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 5mm;
+          padding: 5mm;
         }
       }
     `
     document.head.appendChild(printStyle)
 
-    // Add print class to card
-    if (cardRef.current) {
-      cardRef.current.classList.add('print-card')
+    // Create print container
+    const printContainer = document.createElement('div')
+    printContainer.className = 'print-cards'
+
+    // Add cards for each coupon
+    for (const coupon of generatedCoupons) {
+      const cardDiv = document.createElement('div')
+      cardDiv.innerHTML = await generateCardHtml(coupon)
+      printContainer.appendChild(cardDiv.firstElementChild!)
     }
+
+    document.body.appendChild(printContainer)
 
     window.print()
 
     // Cleanup
     setTimeout(() => {
       document.head.removeChild(printStyle)
-      if (cardRef.current) {
-        cardRef.current.classList.remove('print-card')
-      }
+      document.body.removeChild(printContainer)
     }, 1000)
   }
 
@@ -184,9 +275,8 @@ export default function GenerateCodesPage() {
       pdf.setFontSize(8)
       pdf.setFont('helvetica', 'bold')
       pdf.setTextColor(0, 0, 0)
-      const businessName = '(Name of Business)'
-      const businessNameWidth = pdf.getTextWidth(businessName)
-      pdf.text(businessName, leftX + (leftWidth - businessNameWidth) / 2, leftY)
+      const businessNameWidth = pdf.getTextWidth(businessName.toUpperCase())
+      pdf.text(businessName.toUpperCase(), leftX + (leftWidth - businessNameWidth) / 2, leftY)
 
       // Thank you message - large, bold, black, centered
       pdf.setFontSize(12)
@@ -214,7 +304,7 @@ export default function GenerateCodesPage() {
       pdf.setFontSize(6)
       pdf.setFont('helvetica', 'bold')
       pdf.setTextColor(0, 0, 0)
-      const phoneText = 'Business Phone: NO'
+      const phoneText = `Business Phone: ${businessPhone}`
       const phoneWidth = pdf.getTextWidth(phoneText)
       pdf.text(phoneText, leftX + (leftWidth - phoneWidth) / 2, cardY + cardHeight - 15)
 
@@ -260,11 +350,20 @@ export default function GenerateCodesPage() {
       pdf.setLineWidth(1)
       pdf.rect(qrX - 2, qrY - 2, qrSize + 4, qrSize + 4)
 
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`https://buyagain.ng/redeem/ABCD-1234`)}`
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`https://buyagain.ng/redeem/${couponCode}`)}`
 
       try {
+        // Fetch QR code image and convert to base64
+        const response = await fetch(qrUrl)
+        const blob = await response.blob()
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+
         // Add QR code image to PDF
-        pdf.addImage(qrUrl, 'PNG', qrX, qrY, qrSize, qrSize)
+        pdf.addImage(base64, 'PNG', qrX, qrY, qrSize, qrSize)
       } catch (error) {
         console.warn('Could not add QR code image, using placeholder')
         // Fallback: draw a simple placeholder
@@ -328,7 +427,7 @@ export default function GenerateCodesPage() {
         </head>
         <body>
           <div class="receipt">
-            <div class="center bold">(Name of Business)</div>
+            <div class="center bold">${businessName}</div>
             <div class="center">Thank you for your patronage!</div>
             <div class="center">Here's a special Discount for your next visit</div>
             <div class="center">${terms || "(discount terms / conditions)"}</div>
@@ -340,7 +439,7 @@ export default function GenerateCodesPage() {
             <div class="center bold">${couponCode}</div>
             <div class="center">Valid until ${expiryDate ? new Date(expiryDate).toLocaleDateString() : "(Expiring date)"}</div>
             <div class="center bold">© buyagain.ng</div>
-            <div class="center">Business Phone: NO</div>
+            <div class="center">Business Phone: ${businessPhone}</div>
           </div>
           <script>
             window.onload = function() {
@@ -591,7 +690,7 @@ export default function GenerateCodesPage() {
                       {/* Left Side - White Background */}
                       <div className="bg-white p-5 space-y-3">
                         <div className="space-y-1.5">
-                          <p className="text-xs font-bold text-black uppercase tracking-wide">(Name of Business)</p>
+                          <p className="text-xs font-bold text-black uppercase tracking-wide">{businessName}</p>
                           <h2 className="text-lg font-black text-black leading-tight">Thank you for your patronage!</h2>
                           <p className="text-xs text-black/80 font-medium">
                             Here's a special Discount for your next visit
@@ -601,7 +700,7 @@ export default function GenerateCodesPage() {
                           </p>
                         </div>
                         <div className="pt-2 border-t border-black/20">
-                          <p className="text-[10px] font-bold text-black uppercase tracking-wide">Business Phone: NO</p>
+                          <p className="text-[10px] font-bold text-black uppercase tracking-wide">Business Phone: {businessPhone}</p>
                         </div>
                       </div>
 
@@ -618,7 +717,7 @@ export default function GenerateCodesPage() {
 
                         <div className="text-center space-y-1.5">
                       <p className="text-xs font-bold text-black">
-                        Get {discountType === "percentage" ? `${discountValue}%` : `NGN${discountValue}`} off.
+                        Get {discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.
                       </p>
                           {/* QR Code */}
                           <div className="bg-white p-2.5 rounded-lg border-4 border-black">
