@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-
+import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,7 +15,7 @@ import QRCode from "react-qr-code"
 import jsPDF from "jspdf"
 import { couponsApi, authApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import qrcode from "qrcode"
+
 
 export default function GenerateCodesPage() {
   const router = useRouter()
@@ -134,14 +133,36 @@ export default function GenerateCodesPage() {
   const generateCardHtml = async (coupon: any) => {
     const couponCode = coupon?.code || 'ABCD-1234'
 
-    let qrDataUrl = ''
-    try {
-      const qrResult = await qrcode.toDataURL(`https://buyagain.ng/redeem/${couponCode}`)
-      qrDataUrl = qrResult as unknown as string
-    } catch (error) {
-      console.warn('Could not generate QR code for print, using placeholder')
-      qrDataUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIvPgo8dGV4dCB4PSIxMCIgeT0iMTIiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzAwMDAwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UTwvdGV4dD4KPHRleHQgeD0iMTAiIHk9IjE4IiBmb250LXNpemU9IjYiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkM8L3RleHQ+Cjwvc3ZnPg=='
-    }
+    // Generate QR code client-side using react-qr-code
+    const qrValue = `https://buyagain.ng/redeem/${couponCode}`
+
+    // Create a temporary div to render the QR code
+    const tempDiv = document.createElement('div')
+    tempDiv.style.display = 'inline-block'
+    tempDiv.style.width = '60px'
+    tempDiv.style.height = '60px'
+
+    // Use ReactDOM to render the QR code component
+    const React = (await import('react')).default
+    const ReactDOM = (await import('react-dom/client')).default
+    const QRCode = (await import('react-qr-code')).default
+
+    const root = ReactDOM.createRoot(tempDiv)
+    root.render(React.createElement(QRCode, {
+      value: qrValue,
+      size: 60,
+      level: 'M'
+    }))
+
+    // Wait for the QR code to render
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // Get the SVG content
+    const svgElement = tempDiv.querySelector('svg')
+    const qrHtml = svgElement ? svgElement.outerHTML : `<svg width="60" height="60" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="#ffffff" stroke="#000000" stroke-width="1"/><text x="10" y="12" font-size="8" fill="#000000" text-anchor="middle">QR</text><text x="10" y="18" font-size="6" fill="#000000" text-anchor="middle">FAIL</text></svg>`
+
+    // Clean up
+    root.unmount()
 
     return `
       <div class="print-card" style="
@@ -174,8 +195,8 @@ export default function GenerateCodesPage() {
           </div>
           <div style="text-align: center;">
             <p style="font-weight: bold; color: black; margin-bottom: 2px;">Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.</p>
-            <div style="background: white; padding: 2px; border-radius: 4px; border: 2px solid black; display: inline-block; margin-bottom: 2px;">
-              <img src="${qrDataUrl}" alt="QR Code" style="width: 20px; height: 20px;" />
+            <div style="background: white; padding: 2px 6px 2px 2px; border-radius: 4px; border: 2px solid black; display: inline-block; margin-bottom: 2px;">
+              ${qrHtml}
             </div>
             <p style="font-weight: bold; color: black; margin-bottom: 2px;">${couponCode}</p>
           </div>
@@ -224,9 +245,59 @@ export default function GenerateCodesPage() {
 
     // Add cards for each coupon
     for (const coupon of generatedCoupons) {
-      const cardDiv = document.createElement('div')
-      cardDiv.innerHTML = await generateCardHtml(coupon)
-      printContainer.appendChild(cardDiv.firstElementChild!)
+      try {
+        const cardDiv = document.createElement('div')
+        cardDiv.innerHTML = await generateCardHtml(coupon)
+        printContainer.appendChild(cardDiv.firstElementChild!)
+      } catch (error) {
+        console.error(`Failed to generate card for coupon ${coupon?.code}:`, error)
+        // Create a fallback card with placeholder QR
+        const fallbackCard = document.createElement('div')
+        fallbackCard.innerHTML = `
+          <div class="print-card" style="
+            background: white;
+            border-radius: 16px;
+            border: 4px solid #d1d5db;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 58% 42%;
+            width: 100%;
+            max-width: 100mm;
+            height: 50mm;
+            font-size: 8px;
+          ">
+            <div style="background: white; padding: 4px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <p style="font-weight: bold; color: black; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">${businessName}</p>
+                <h2 style="font-weight: 900; color: black; line-height: 1.1; margin-bottom: 2px;">Thank you for your patronage!</h2>
+                <p style="color: rgba(0,0,0,0.8); font-weight: 500; margin-bottom: 2px;">Here's a special Discount for your next visit</p>
+                <p style="color: rgba(0,0,0,0.6); font-style: italic; margin-bottom: 4px;">${terms || "(discount terms / conditions)"}</p>
+              </div>
+              <p style="font-weight: bold; color: black; text-transform: uppercase; letter-spacing: 0.05em; border-top: 1px solid rgba(0,0,0,0.2); padding-top: 2px;">Business Phone: ${businessPhone}</p>
+            </div>
+            <div style="padding: 3px; display: flex; flex-direction: column; justify-content: space-between; background-color: ${cardColor};">
+              <div style="display: flex; justify-content: space-between; width: 100%;">
+                <span style="font-size: 8px;">%</span>
+                <span style="font-size: 8px;">🔍</span>
+                <span style="font-size: 8px;">⏰</span>
+              </div>
+              <div style="text-align: center;">
+                <p style="font-weight: bold; color: black; margin-bottom: 2px;">Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.</p>
+                <div style="background: white; padding: 2px 6px 2px 2px; border-radius: 4px; border: 2px solid black; display: inline-block; margin-bottom: 2px;">
+                  <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIvPgo8dGV4dCB4PSIxMCIgeT0iMTIiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzAwMDAwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UTwvdGV4dD4KPHRleHQgeD0iMTAiIHk9IjE4IiBmb250LXNpemU9IjYiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkM8L3RleHQ+Cjwvc3ZnPg==" alt="QR Code" style="width: 60px; height: 60px;" />
+                </div>
+                <p style="font-weight: bold; color: black; margin-bottom: 2px;">${coupon?.code || 'ERROR'}</p>
+              </div>
+              <div>
+                <p style="color: rgba(0,0,0,0.9); font-weight: 500; text-align: center; margin-bottom: 1px;">Valid until ${expiryDate ? new Date(expiryDate).toLocaleDateString() : "(Expiring date)"}</p>
+                <p style="font-weight: bold; color: black; text-align: center;">© buyagain.ng</p>
+              </div>
+            </div>
+          </div>
+        `
+        printContainer.appendChild(fallbackCard.firstElementChild!)
+      }
     }
 
     document.body.appendChild(printContainer)
@@ -356,9 +427,16 @@ export default function GenerateCodesPage() {
         // Fetch QR code image and convert to base64
         const response = await fetch(qrUrl)
         const blob = await response.blob()
-        const base64 = await new Promise<string>((resolve) => {
+        const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader()
-          reader.onload = () => resolve(reader.result as string)
+          reader.onload = () => {
+            if (typeof reader.result === 'string') {
+              resolve(reader.result)
+            } else {
+              reject(new Error('Failed to read QR code as string'))
+            }
+          }
+          reader.onerror = () => reject(new Error('FileReader error'))
           reader.readAsDataURL(blob)
         })
 
@@ -405,54 +483,80 @@ export default function GenerateCodesPage() {
     }
   }
 
-  const handlePrintPOS = () => {
+  const handlePrintPOS = async () => {
     setPrintMode("pos")
-    // Create a temporary POS-style receipt
-    const posWindow = window.open('', '_blank', 'width=300,height=600')
-    if (!posWindow) return
+    setPrintingPOS(true)
 
-    const couponCode = generatedCoupons[0]?.code || 'ABCD-1234'
-    const posContent = `
-      <html>
-        <head>
-          <title>POS Receipt</title>
-          <style>
-            body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 10px; }
-            .receipt { max-width: 250px; margin: 0 auto; }
-            .center { text-align: center; }
-            .bold { font-weight: bold; }
-            .divider { border-top: 1px dashed #000; margin: 5px 0; }
-            .qr-container { text-align: center; margin: 10px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="receipt">
-            <div class="center bold">${businessName}</div>
-            <div class="center">Thank you for your patronage!</div>
-            <div class="center">Here's a special Discount for your next visit</div>
-            <div class="center">${terms || "(discount terms / conditions)"}</div>
-            <div class="divider"></div>
-            <div class="center bold">Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.</div>
-            <div class="qr-container">
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://buyagain.ng/redeem/${couponCode}" alt="QR Code" style="width: 100px; height: 100px;" />
+    try {
+      const couponCode = generatedCoupons[0]?.code || 'ABCD-1234'
+
+      // Fetch QR code and convert to base64
+      let qrDataUrl = ''
+      try {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://buyagain.ng/redeem/${couponCode}`)}`
+        const response = await fetch(qrUrl)
+        const blob = await response.blob()
+        qrDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+      } catch (error) {
+        console.warn(`Could not generate QR code for POS print, using placeholder:`, error)
+        qrDataUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIvPgo8dGV4dCB4PSIxMCIgeT0iMTIiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzAwMDAwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UTwvdGV4dD4KPHRleHQgeD0iMTAiIHk9IjE4IiBmb250LXNpemU9IjYiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkM8L3RleHQ+Cjwvc3ZnPg=='
+      }
+
+      // Create a temporary POS-style receipt
+      const posWindow = window.open('', '_blank', 'width=300,height=600')
+      if (!posWindow) return
+
+      const posContent = `
+        <html>
+          <head>
+            <title>POS Receipt</title>
+            <style>
+              body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 10px; }
+              .receipt { max-width: 250px; margin: 0 auto; }
+              .center { text-align: center; }
+              .bold { font-weight: bold; }
+              .divider { border-top: 1px dashed #000; margin: 5px 0; }
+              .qr-container { text-align: center; margin: 10px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="receipt">
+              <div class="center bold">${businessName}</div>
+              <div class="center">Thank you for your patronage!</div>
+              <div class="center">Here's a special Discount for your next visit</div>
+              <div class="center">${terms || "(discount terms / conditions)"}</div>
+              <div class="divider"></div>
+              <div class="center bold">Get ${discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.</div>
+              <div class="qr-container">
+                <img src="${qrDataUrl}" alt="QR Code" style="width: 100px; height: 100px;" />
+              </div>
+              <div class="center bold">${couponCode}</div>
+              <div class="center">Valid until ${expiryDate ? new Date(expiryDate).toLocaleDateString() : "(Expiring date)"}</div>
+              <div class="center bold">© buyagain.ng</div>
+              <div class="center">Business Phone: ${businessPhone}</div>
             </div>
-            <div class="center bold">${couponCode}</div>
-            <div class="center">Valid until ${expiryDate ? new Date(expiryDate).toLocaleDateString() : "(Expiring date)"}</div>
-            <div class="center bold">© buyagain.ng</div>
-            <div class="center">Business Phone: ${businessPhone}</div>
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 1000);
-            }
-          </script>
-        </body>
-      </html>
-    `
+            <script>
+              window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 1000);
+              }
+            </script>
+          </body>
+        </html>
+      `
 
-    posWindow.document.write(posContent)
-    posWindow.document.close()
+      posWindow.document.write(posContent)
+      posWindow.document.close()
+    } catch (error) {
+      console.error('Error generating POS receipt:', error)
+      alert('Error generating POS receipt. Please try again.')
+    } finally {
+      setPrintingPOS(false)
+    }
   }
 
   const handleShareOnSocial = async () => {
@@ -716,9 +820,9 @@ export default function GenerateCodesPage() {
                         </div>
 
                         <div className="text-center space-y-1.5">
-                      <p className="text-xs font-bold text-black">
-                        Get {discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.
-                      </p>
+                          <p className="text-xs font-bold text-black">
+                            Get {discountType === "percentage" ? `${discountValue}%` : `₦${discountValue}`} off.
+                          </p>
                           {/* QR Code */}
                           <div className="bg-white p-2.5 rounded-lg border-4 border-black">
                             <QRCode
