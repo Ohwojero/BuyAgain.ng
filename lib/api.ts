@@ -191,7 +191,23 @@ export const analyticsApi = {
   getRevenue: (params?: any) =>
     api.get('/analytics/revenue', params),
 
-  getAnalytics: () =>
+  getAnalytics: (): Promise<ApiResponse<{
+    totalCoupons: number;
+    totalRedemptions: number;
+    totalReferrals: number;
+    totalRevenue: number;
+    returningCustomers: number;
+    topCustomers: Array<{
+      id: string;
+      name: string;
+      visits: number;
+    }>;
+    couponPerformance: Array<{
+      type: string;
+      generated: number;
+      redeemed: number;
+    }>;
+  }>> =>
     api.get('/analytics'),
 
   getRedemptionTrends: () =>
@@ -251,13 +267,13 @@ export const auditlogsApi = {
 
 // Referrals API
 export const referralsApi = {
-  create: (data: any) =>
+  create: (data: any): Promise<ApiResponse<{ message: string; referral: Referral }>> =>
     api.post('/referrals', data),
 
   getAll: (): Promise<ApiResponse<Referral[]>> =>
     api.get('/referrals'),
 
-  getByCode: (code: string) =>
+  getByCode: (code: string): Promise<ApiResponse<Referral>> =>
     api.get(`/referrals/code/${code}`),
 
   redeem: (code: string, data: any) =>

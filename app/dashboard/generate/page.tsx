@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation"
 import { usePlan } from "@/lib/plan-context"
 import QRCode from "react-qr-code"
 import jsPDF from "jspdf"
-import { couponsApi, authApi } from "@/lib/api"
+import { couponsApi, authApi, referralsApi } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
 
@@ -64,54 +64,77 @@ export default function GenerateCodesPage() {
     setLoading(true)
 
     try {
-      // Map frontend values to backend API values
-      const couponTypeMap = {
-        single: "DISCOUNT",
-        referral: "REFERRAL",
-        promo: "DISCOUNT",
-        multiple: "DISCOUNT"
-      }
+      if (codeType === "referral") {
+        // Handle referral generation separately
+        const referralPayload = {
+          referrerName: referrerName || "Anonymous",
+          referrerPhone: referrerPhone || "",
+          referredName: null,
+          referredPhone: null,
+          rewardAmount: parseInt(discountValue),
+        }
 
-      const discountTypeMap = {
-        percentage: "PERCENTAGE",
-        fixed: "FIXED"
-      }
+        const response = await referralsApi.create(referralPayload)
 
-      const payload = {
-        type: couponTypeMap[codeType as keyof typeof couponTypeMap],
-        value: parseInt(discountValue),
-        valueType: discountTypeMap[discountType as keyof typeof discountTypeMap],
-        quantity: parseInt(quantity),
-        expiryDate: expiryDate || undefined,
-        title: `${discountValue}${discountType === "percentage" ? "%" : "NGN"} off discount`,
-        description: `Get ${discountValue}${discountType === "percentage" ? "%" : "NGN"} off your next purchase`,
-        terms: terms || undefined,
-        ...(codeType === "referral" && {
-          referrerName: referrerName || undefined,
-          referrerPhone: referrerPhone || undefined,
-        }),
-      }
-
-      const response = await couponsApi.generate(payload)
-
-      if (response.success) {
-        setGeneratedCoupons((response.data as any).coupons || [response.data])
-        setGenerated(true)
-        toast({
-          title: "Success",
-          description: `Generated ${quantity} coupon(s) successfully!`,
-        })
+        if (response.success && response.data) {
+          setGeneratedCoupons([response.data.referral])
+          setGenerated(true)
+          toast({
+            title: "Success",
+            description: "Referral code generated successfully!",
+          })
+        } else {
+          toast({
+            title: "Error",
+            description: response.error || "Failed to generate referral code",
+            variant: "destructive",
+          })
+        }
       } else {
-        toast({
-          title: "Error",
-          description: response.error || "Failed to generate coupons",
-          variant: "destructive",
-        })
+        // Handle coupon generation
+        const couponTypeMap = {
+          single: "DISCOUNT",
+          promo: "DISCOUNT",
+          multiple: "DISCOUNT"
+        }
+
+        const discountTypeMap = {
+          percentage: "PERCENTAGE",
+          fixed: "FIXED"
+        }
+
+        const payload = {
+          type: couponTypeMap[codeType as keyof typeof couponTypeMap],
+          value: parseInt(discountValue),
+          valueType: discountTypeMap[discountType as keyof typeof discountTypeMap],
+          quantity: parseInt(quantity),
+          expiryDate: expiryDate || undefined,
+          title: `${discountValue}${discountType === "percentage" ? "%" : "NGN"} off discount`,
+          description: `Get ${discountValue}${discountType === "percentage" ? "%" : "NGN"} off your next purchase`,
+          terms: terms || undefined,
+        }
+
+        const response = await couponsApi.generate(payload)
+
+        if (response.success) {
+          setGeneratedCoupons((response.data as any).coupons || [response.data])
+          setGenerated(true)
+          toast({
+            title: "Success",
+            description: `Generated ${quantity} coupon(s) successfully!`,
+          })
+        } else {
+          toast({
+            title: "Error",
+            description: response.error || "Failed to generate coupons",
+            variant: "destructive",
+          })
+        }
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Network error occurred while generating coupons",
+        description: "Network error occurred while generating codes",
         variant: "destructive",
       })
     } finally {
@@ -120,11 +143,11 @@ export default function GenerateCodesPage() {
   }
 
   const isFeatureAvailable = (feature: string) => {
-    if (feature === "referral" || feature === "promo" || feature === "multiple") {
+    if (feature === "promo" || feature === "multiple") {
       return currentPlan !== "free"
     }
     // Allow basic features on free plan
-    if (feature === "colorChange" || feature === "shareOnSocials") {
+    if (feature === "referral" || feature === "colorChange" || feature === "shareOnSocials") {
       return true
     }
     return true
@@ -559,6 +582,29 @@ export default function GenerateCodesPage() {
     }
   }
 
+  const handleCopyReferralLink = async () => {
+    try {
+      const couponCode = generatedCoupons[0]?.code || 'ABCD-1234'
+
+      // Use localhost for local development, production URL for deployed version
+      const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      const baseUrl = isLocalhost ? 'http://localhost:3000' : 'https://buyagain.ng'
+      const referralLink = `${baseUrl}/referral/${couponCode}`
+
+      await navigator.clipboard.writeText(referralLink)
+      toast({
+        title: "Link Copied!",
+        description: `Referral link copied: ${referralLink}`,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy link to clipboard",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleShareOnSocial = async () => {
     setSharing(true)
     try {
@@ -616,8 +662,8 @@ export default function GenerateCodesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="single">Single Use Discount Code</SelectItem>
-                      <SelectItem value="referral" disabled={!isFeatureAvailable("referral")}>
-                        Referral Codes {!isFeatureAvailable("referral") && "(Tier 2+)"}
+                      <SelectItem value="referral">
+                        Referral Codes
                       </SelectItem>
                       <SelectItem value="promo" disabled={!isFeatureAvailable("promo")}>
                         Special Promo Codes {!isFeatureAvailable("promo") && "(Tier 2+)"}
@@ -629,7 +675,7 @@ export default function GenerateCodesPage() {
                   </Select>
                   {currentPlan === "free" && (
                     <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
-                      <strong>NOTE:</strong> Multiple user codes, referral codes, and special promo codes are only
+                      <strong>NOTE:</strong> Multiple user codes and special promo codes are only
                       available to tier 2 customers
                     </p>
                   )}
@@ -826,7 +872,10 @@ export default function GenerateCodesPage() {
                           {/* QR Code */}
                           <div className="bg-white p-0.5 rounded border border-black max-w-fit mx-auto">
                             <QRCode
-                              value={`https://buyagain.ng/redeem/${generatedCoupons[0]?.code || 'ABCD-1234'}`}
+                              value={codeType === "referral"
+                                ? `http://localhost:3000/referral/${generatedCoupons[0]?.code || 'ABCD-1234'}`
+                                : `https://buyagain.ng/redeem/${generatedCoupons[0]?.code || 'ABCD-1234'}`
+                              }
                               size={30}
                               level="M"
                             />
@@ -932,6 +981,19 @@ export default function GenerateCodesPage() {
                         </>
                       )}
                     </Button>
+
+                    {/* Copy Referral Link */}
+                    {codeType === "referral" && (
+                      <Button
+                        variant="outline"
+                        className="w-full font-semibold text-base bg-transparent"
+                        size="lg"
+                        onClick={handleCopyReferralLink}
+                      >
+                        <Share2 className="h-5 w-5 mr-2" />
+                        Copy Referral Link
+                      </Button>
+                    )}
 
                     {/* Share on Socials */}
                     <Button
